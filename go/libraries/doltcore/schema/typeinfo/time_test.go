@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -121,7 +122,8 @@ func TestTimeConvertValueToNomsValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf(`%v`, test.input), func(t *testing.T) {
-			output, err := TimeType.ConvertValueToNomsValue(test.input)
+			vrw := types.NewInternalValueStore()
+			output, err := TimeType.ConvertValueToNomsValue(context.Background(), vrw, test.input)
 			if !test.expectedErr {
 				require.NoError(t, err)
 				assert.Equal(t, test.output, output)
@@ -223,7 +225,8 @@ func TestTimeParseValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf(`%v`, test.input), func(t *testing.T) {
-			output, err := TimeType.ParseValue(&test.input)
+			vrw := types.NewInternalValueStore()
+			output, err := TimeType.ParseValue(context.Background(), vrw, &test.input)
 			if !test.expectedErr {
 				require.NoError(t, err)
 				assert.Equal(t, test.output, output)

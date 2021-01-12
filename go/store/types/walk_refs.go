@@ -188,6 +188,8 @@ func (r *refWalker) walkValue(nbf *NomsBinFormat, cb RefCallback) error {
 		return r.walkStruct(nbf, cb)
 	case TupleKind:
 		return r.walkTuple(nbf, cb)
+	case ChunkedStringKind:
+		return r.walkChunkedString(nbf, cb)
 	case TypeKind:
 		r.skipKind()
 		return r.skipType()
@@ -213,4 +215,8 @@ func (r *refWalker) walkStruct(nbf *NomsBinFormat, cb RefCallback) error {
 
 func (r *refWalker) walkTuple(nbf *NomsBinFormat, cb RefCallback) error {
 	return walkTuple(nbf, r, cb)
+}
+
+func (r *refWalker) walkChunkedString(nbf *NomsBinFormat, cb RefCallback) error {
+	return walkChunkedString(nbf, r, cb)
 }

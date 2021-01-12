@@ -135,7 +135,8 @@ func ForeignKeyIsSatisfied(ctx context.Context, fk doltdb.ForeignKey, childIdx, 
 		return err
 	}
 
-	rc, err := rowconv.NewRowConverter(fm)
+	vrw := types.NewInternalValueStore() // We are checking fks rather than persisting any values, so an internal VRW can be used
+	rc, err := rowconv.NewRowConverter(ctx, vrw, fm)
 	if err != nil {
 		return err
 	}

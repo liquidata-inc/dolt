@@ -81,7 +81,7 @@ func doltSchWithPKFromSqlSchema(sch sql.Schema) schema.Schema {
 	return schema.MustSchemaFromCols(newCC)
 }
 
-func nextQueryDiff(qd *querydiff.QueryDiffer, joiner *rowconv.Joiner) (row.Row, pipeline.ImmutableProperties, error) {
+func nextQueryDiff(vrw types.ValueReadWriter, qd *querydiff.QueryDiffer, joiner *rowconv.Joiner) (row.Row, pipeline.ImmutableProperties, error) {
 	fromRow, toRow, err := qd.NextDiff()
 	if err != nil {
 		return nil, pipeline.ImmutableProperties{}, err
@@ -90,7 +90,7 @@ func nextQueryDiff(qd *querydiff.QueryDiffer, joiner *rowconv.Joiner) (row.Row, 
 	rows := make(map[string]row.Row)
 	if fromRow != nil {
 		sch := joiner.SchemaForName(diff.From)
-		oldRow, err := sqlutil.SqlRowToDoltRow(types.Format_Default, fromRow, sch)
+		oldRow, err := sqlutil.SqlRowToDoltRow(context.Background(), vrw, fromRow, sch)
 		if err != nil {
 			return nil, pipeline.ImmutableProperties{}, err
 		}
@@ -99,7 +99,7 @@ func nextQueryDiff(qd *querydiff.QueryDiffer, joiner *rowconv.Joiner) (row.Row, 
 
 	if toRow != nil {
 		sch := joiner.SchemaForName(diff.To)
-		newRow, err := sqlutil.SqlRowToDoltRow(types.Format_Default, toRow, sch)
+		newRow, err := sqlutil.SqlRowToDoltRow(context.Background(), vrw, toRow, sch)
 		if err != nil {
 			return nil, pipeline.ImmutableProperties{}, err
 		}
@@ -115,8 +115,8 @@ func nextQueryDiff(qd *querydiff.QueryDiffer, joiner *rowconv.Joiner) (row.Row, 
 }
 
 func buildQueryDiffPipeline(qd *querydiff.QueryDiffer, doltSch schema.Schema, joiner *rowconv.Joiner) (*pipeline.Pipeline, error) {
-
-	unionSch, ds, verr := createSplitter(doltSch, doltSch, joiner, &diffArgs{diffOutput: TabularDiffOutput})
+	vrw := types.NewInternalValueStore() // We don't want to persist anything, so we use an internal store
+	unionSch, ds, verr := createSplitter(context.Background(), vrw, doltSch, doltSch, joiner, &diffArgs{diffOutput: TabularDiffOutput})
 	if verr != nil {
 		return nil, verr
 	}
@@ -143,7 +143,7 @@ func buildQueryDiffPipeline(qd *querydiff.QueryDiffer, doltSch schema.Schema, jo
 	sinkProcFunc := pipeline.ProcFuncForSinkFunc(sink.ProcRowWithProps)
 
 	srcProcFunc := pipeline.ProcFuncForSourceFunc(func() (row.Row, pipeline.ImmutableProperties, error) {
-		return nextQueryDiff(qd, joiner)
+		return nextQueryDiff(vrw, qd, joiner)
 	})
 
 	p := pipeline.NewAsyncPipeline(srcProcFunc, sinkProcFunc, transforms, badRowCB)

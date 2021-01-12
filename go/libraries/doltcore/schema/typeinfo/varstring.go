@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -99,7 +100,7 @@ func (ti *varStringType) ConvertNomsValueToValue(v types.Value) (interface{}, er
 }
 
 // ConvertValueToNomsValue implements TypeInfo interface.
-func (ti *varStringType) ConvertValueToNomsValue(v interface{}) (types.Value, error) {
+func (ti *varStringType) ConvertValueToNomsValue(ctx context.Context, vrw types.ValueReadWriter, v interface{}) (types.Value, error) {
 	if v == nil {
 		return types.NullValue, nil
 	}
@@ -190,11 +191,11 @@ func (ti *varStringType) NomsKind() types.NomsKind {
 }
 
 // ParseValue implements TypeInfo interface.
-func (ti *varStringType) ParseValue(str *string) (types.Value, error) {
+func (ti *varStringType) ParseValue(ctx context.Context, vrw types.ValueReadWriter, str *string) (types.Value, error) {
 	if str == nil {
 		return types.NullValue, nil
 	}
-	return ti.ConvertValueToNomsValue(*str)
+	return ti.ConvertValueToNomsValue(context.Background(), nil, *str)
 }
 
 // Promote implements TypeInfo interface.

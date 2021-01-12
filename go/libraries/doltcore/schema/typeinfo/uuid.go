@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -44,7 +45,7 @@ func (ti *uuidType) ConvertNomsValueToValue(v types.Value) (interface{}, error) 
 }
 
 // ConvertValueToNomsValue implements TypeInfo interface.
-func (ti *uuidType) ConvertValueToNomsValue(v interface{}) (types.Value, error) {
+func (ti *uuidType) ConvertValueToNomsValue(ctx context.Context, vrw types.ValueReadWriter, v interface{}) (types.Value, error) {
 	switch val := v.(type) {
 	case nil:
 		return types.NullValue, nil
@@ -109,7 +110,7 @@ func (ti *uuidType) NomsKind() types.NomsKind {
 }
 
 // ParseValue implements TypeInfo interface.
-func (ti *uuidType) ParseValue(str *string) (types.Value, error) {
+func (ti *uuidType) ParseValue(ctx context.Context, vrw types.ValueReadWriter, str *string) (types.Value, error) {
 	if str == nil || *str == "" {
 		return types.NullValue, nil
 	}

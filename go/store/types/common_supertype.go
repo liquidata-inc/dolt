@@ -50,7 +50,7 @@ func containCommonSupertypeImpl(nbf *NomsBinFormat, a, b *Type, aVisited, bVisit
 	switch k := a.TargetKind(); k {
 	case StructKind:
 		return structsIntersect(nbf, a, b, aVisited, bVisited)
-	case ListKind, SetKind, RefKind, TupleKind:
+	case ListKind, SetKind, RefKind, TupleKind, ChunkedStringKind:
 		return containersIntersect(nbf, k, a, b, aVisited, bVisited)
 	case MapKind:
 		return mapsIntersect(nbf, a, b, aVisited, bVisited)

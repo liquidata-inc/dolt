@@ -15,15 +15,21 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/dolt/go/store/types"
 )
+
+var DefaultInlineBlobType = &inlineBlobType{sql.MustCreateBinary(sqltypes.VarBinary, math.MaxUint16)}
 
 func TestInlineBlobConvertNomsValueToValue(t *testing.T) {
 	tests := []struct {
@@ -45,8 +51,8 @@ func TestInlineBlobConvertNomsValueToValue(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf(`%v %v`, InlineBlobType.String(), test.input), func(t *testing.T) {
-			output, err := InlineBlobType.ConvertNomsValueToValue(test.input)
+		t.Run(fmt.Sprintf(`%v %v`, DefaultInlineBlobType.String(), test.input), func(t *testing.T) {
+			output, err := DefaultInlineBlobType.ConvertNomsValueToValue(test.input)
 			require.NoError(t, err)
 			require.Equal(t, test.output, output)
 		})
@@ -92,8 +98,9 @@ func TestInlineBlobConvertValueToNomsValue(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf(`%v %v`, InlineBlobType.String(), test.input), func(t *testing.T) {
-			output, err := InlineBlobType.ConvertValueToNomsValue(test.input)
+		t.Run(fmt.Sprintf(`%v %v`, DefaultInlineBlobType.String(), test.input), func(t *testing.T) {
+			vrw := types.NewInternalValueStore()
+			output, err := DefaultInlineBlobType.ConvertValueToNomsValue(context.Background(), vrw, test.input)
 			if !test.expectedErr {
 				require.NoError(t, err)
 				assert.Equal(t, test.output, output)
@@ -124,8 +131,8 @@ func TestInlineBlobFormatValue(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf(`%v %v`, InlineBlobType.String(), test.input), func(t *testing.T) {
-			output, err := InlineBlobType.FormatValue(test.input)
+		t.Run(fmt.Sprintf(`%v %v`, DefaultInlineBlobType.String(), test.input), func(t *testing.T) {
+			output, err := DefaultInlineBlobType.FormatValue(test.input)
 			require.NoError(t, err)
 			require.Equal(t, test.output, *output)
 		})
@@ -152,8 +159,9 @@ func TestInlineBlobParseValue(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf(`%v %v`, InlineBlobType.String(), test.input), func(t *testing.T) {
-			output, err := InlineBlobType.ParseValue(&test.input)
+		t.Run(fmt.Sprintf(`%v %v`, DefaultInlineBlobType.String(), test.input), func(t *testing.T) {
+			vrw := types.NewInternalValueStore()
+			output, err := DefaultInlineBlobType.ParseValue(context.Background(), vrw, &test.input)
 			require.NoError(t, err)
 			assert.Equal(t, test.output, output)
 		})

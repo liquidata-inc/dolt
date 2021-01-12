@@ -15,6 +15,7 @@
 package xlsx
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -65,7 +66,7 @@ func openBinary(content []byte) (*xlsx.File, error) {
 	return data, nil
 }
 
-func decodeXLSXRows(nbf *types.NomsBinFormat, xlData [][][]string, sch schema.Schema) ([]row.Row, error) {
+func decodeXLSXRows(ctx context.Context, vrw types.ValueReadWriter, xlData [][][]string, sch schema.Schema) ([]row.Row, error) {
 	var rows []row.Row
 
 	var err error
@@ -86,12 +87,12 @@ func decodeXLSXRows(nbf *types.NomsBinFormat, xlData [][][]string, sch schema.Sc
 					return nil, errors.New(v + "is not a valid column")
 				}
 				valString := dataVals[i+1][k]
-				taggedVals[col.Tag], err = col.TypeInfo.ParseValue(&valString)
+				taggedVals[col.Tag], err = col.TypeInfo.ParseValue(ctx, vrw, &valString)
 				if err != nil {
 					return nil, err
 				}
 			}
-			r, err := row.New(nbf, sch, taggedVals)
+			r, err := row.New(vrw.Format(), sch, taggedVals)
 
 			if err != nil {
 				return nil, err

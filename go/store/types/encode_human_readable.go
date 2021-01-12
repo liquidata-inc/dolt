@@ -240,6 +240,13 @@ func (w *hrsWriter) Write(ctx context.Context, v Value) error {
 		w.outdent()
 		w.write("]")
 
+	case ChunkedStringKind:
+		s, err := v.(ChunkedString).ReadString(ctx, 64)
+		if err != nil {
+			return err
+		}
+		w.write(strconv.Quote(string(s)))
+
 	case TupleKind:
 		w.write("(")
 		err := v.(Tuple).IterFields(func(i uint64, v Value) (bool, error) {

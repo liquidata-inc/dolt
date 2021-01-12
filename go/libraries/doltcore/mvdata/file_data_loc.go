@@ -104,7 +104,7 @@ func (dl FileDataLocation) NewReader(ctx context.Context, root *doltdb.RootValue
 
 	case XlsxFile:
 		xlsxOpts := opts.(XlsxOptions)
-		rd, err := xlsx.OpenXLSXReader(root.VRW().Format(), dl.Path, fs, &xlsx.XLSXFileInfo{SheetName: xlsxOpts.SheetName})
+		rd, err := xlsx.OpenXLSXReader(ctx, root.VRW(), dl.Path, fs, &xlsx.XLSXFileInfo{SheetName: xlsxOpts.SheetName})
 		return rd, false, err
 
 	case JsonFile:
@@ -136,7 +136,7 @@ func (dl FileDataLocation) NewReader(ctx context.Context, root *doltdb.RootValue
 			}
 		}
 
-		rd, err := json.OpenJSONReader(root.VRW().Format(), dl.Path, fs, sch)
+		rd, err := json.OpenJSONReader(root.VRW(), dl.Path, fs, sch)
 		return rd, false, err
 	}
 

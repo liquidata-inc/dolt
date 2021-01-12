@@ -24,6 +24,7 @@ package nbs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 
 	"golang.org/x/sync/errgroup"
@@ -175,6 +176,10 @@ func (mt *memTable) extract(ctx context.Context, chunks chan<- extractRecord) er
 }
 
 func (mt *memTable) write(haver chunkReader, stats *Stats) (name addr, data []byte, count uint32, err error) {
+	numChunks := uint64(len(mt.order))
+	if numChunks == 0 {
+		return addr{}, nil, 0, fmt.Errorf("mem table cannot write with zero chunks")
+	}
 	maxSize := maxTableSize(uint64(len(mt.order)), mt.totalData)
 	buff := make([]byte, maxSize)
 	tw := newTableWriter(buff, mt.snapper)

@@ -15,6 +15,7 @@
 package sqlutil
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -45,14 +46,14 @@ func DoltRowToSqlRow(doltRow row.Row, sch schema.Schema) (sql.Row, error) {
 }
 
 // SqlRowToDoltRow constructs a Dolt row.Row from a go-mysql-server sql.Row.
-func SqlRowToDoltRow(nbf *types.NomsBinFormat, r sql.Row, doltSchema schema.Schema) (row.Row, error) {
+func SqlRowToDoltRow(ctx context.Context, vrw types.ValueReadWriter, r sql.Row, doltSchema schema.Schema) (row.Row, error) {
 	if schema.IsKeyless(doltSchema) {
-		return keylessDoltRowFromSqlRow(nbf, r, doltSchema)
+		return keylessDoltRowFromSqlRow(ctx, vrw, r, doltSchema)
 	}
-	return pkDoltRowFromSqlRow(nbf, r, doltSchema)
+	return pkDoltRowFromSqlRow(ctx, vrw, r, doltSchema)
 }
 
-func pkDoltRowFromSqlRow(nbf *types.NomsBinFormat, r sql.Row, doltSchema schema.Schema) (row.Row, error) {
+func pkDoltRowFromSqlRow(ctx context.Context, vrw types.ValueReadWriter, r sql.Row, doltSchema schema.Schema) (row.Row, error) {
 	taggedVals := make(row.TaggedValues)
 	allCols := doltSchema.GetAllCols()
 	for i, val := range r {
@@ -60,7 +61,7 @@ func pkDoltRowFromSqlRow(nbf *types.NomsBinFormat, r sql.Row, doltSchema schema.
 		schCol := allCols.TagToCol[tag]
 		if val != nil {
 			var err error
-			taggedVals[tag], err = schCol.TypeInfo.ConvertValueToNomsValue(val)
+			taggedVals[tag], err = schCol.TypeInfo.ConvertValueToNomsValue(ctx, vrw, val)
 			if err != nil {
 				return nil, err
 			}
@@ -69,17 +70,17 @@ func pkDoltRowFromSqlRow(nbf *types.NomsBinFormat, r sql.Row, doltSchema schema.
 			return nil, fmt.Errorf("column <%v> received nil but is non-nullable", schCol.Name)
 		}
 	}
-	return row.New(nbf, doltSchema, taggedVals)
+	return row.New(vrw.Format(), doltSchema, taggedVals)
 }
 
-func keylessDoltRowFromSqlRow(nbf *types.NomsBinFormat, sqlRow sql.Row, sch schema.Schema) (row.Row, error) {
+func keylessDoltRowFromSqlRow(ctx context.Context, vrw types.ValueReadWriter, sqlRow sql.Row, sch schema.Schema) (row.Row, error) {
 	j := 0
 	vals := make([]types.Value, sch.GetAllCols().Size()*2)
 
 	for idx, val := range sqlRow {
 		if val != nil {
 			col := sch.GetAllCols().GetByIndex(idx)
-			nv, err := col.TypeInfo.ConvertValueToNomsValue(val)
+			nv, err := col.TypeInfo.ConvertValueToNomsValue(ctx, vrw, val)
 			if err != nil {
 				return nil, err
 			}
@@ -90,5 +91,5 @@ func keylessDoltRowFromSqlRow(nbf *types.NomsBinFormat, sqlRow sql.Row, sch sche
 		}
 	}
 
-	return row.KeylessRow(nbf, vals[:j]...)
+	return row.KeylessRow(vrw.Format(), vals[:j]...)
 }

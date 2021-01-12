@@ -55,6 +55,7 @@ const (
 	InlineBlobKind
 	TimestampKind
 	DecimalKind
+	ChunkedStringKind
 
 	UnknownKind NomsKind = 255
 )
@@ -81,6 +82,7 @@ func init() {
 	KindToType[InlineBlobKind] = InlineBlob{}
 	KindToType[TimestampKind] = Timestamp{}
 	KindToType[DecimalKind] = Decimal{}
+	KindToType[ChunkedStringKind] = ChunkedString{}
 
 	SupportedKinds[BlobKind] = true
 	SupportedKinds[BoolKind] = true
@@ -103,33 +105,35 @@ func init() {
 	SupportedKinds[InlineBlobKind] = true
 	SupportedKinds[TimestampKind] = true
 	SupportedKinds[DecimalKind] = true
+	SupportedKinds[ChunkedStringKind] = true
 }
 
 var KindToTypeSlice []Value
 
 var KindToString = map[NomsKind]string{
-	UnknownKind:    "unknown",
-	BlobKind:       "Blob",
-	BoolKind:       "Bool",
-	CycleKind:      "Cycle",
-	ListKind:       "List",
-	MapKind:        "Map",
-	FloatKind:      "Float",
-	RefKind:        "Ref",
-	SetKind:        "Set",
-	StructKind:     "Struct",
-	StringKind:     "String",
-	TypeKind:       "Type",
-	UnionKind:      "Union",
-	ValueKind:      "Value",
-	UUIDKind:       "UUID",
-	IntKind:        "Int",
-	UintKind:       "Uint",
-	NullKind:       "Null",
-	TupleKind:      "Tuple",
-	InlineBlobKind: "InlineBlob",
-	TimestampKind:  "Timestamp",
-	DecimalKind:    "Decimal",
+	UnknownKind:       "unknown",
+	BlobKind:          "Blob",
+	BoolKind:          "Bool",
+	CycleKind:         "Cycle",
+	ListKind:          "List",
+	MapKind:           "Map",
+	FloatKind:         "Float",
+	RefKind:           "Ref",
+	SetKind:           "Set",
+	StructKind:        "Struct",
+	StringKind:        "String",
+	TypeKind:          "Type",
+	UnionKind:         "Union",
+	ValueKind:         "Value",
+	UUIDKind:          "UUID",
+	IntKind:           "Int",
+	UintKind:          "Uint",
+	NullKind:          "Null",
+	TupleKind:         "Tuple",
+	InlineBlobKind:    "InlineBlob",
+	TimestampKind:     "Timestamp",
+	DecimalKind:       "Decimal",
+	ChunkedStringKind: "ChunkedString",
 }
 
 // String returns the name of the kind.

@@ -15,7 +15,9 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
+	"math"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -75,7 +77,7 @@ type TypeInfo interface {
 
 	// ConvertValueToNomsValue converts a go value or Noms value to a Noms value. The type of the Noms
 	// value will be equivalent to the NomsKind returned from NomsKind.
-	ConvertValueToNomsValue(v interface{}) (types.Value, error)
+	ConvertValueToNomsValue(ctx context.Context, vrw types.ValueReadWriter, v interface{}) (types.Value, error)
 
 	// Equals returns whether the given TypeInfo is equivalent to this TypeInfo.
 	Equals(other TypeInfo) bool
@@ -97,7 +99,7 @@ type TypeInfo interface {
 	NomsKind() types.NomsKind
 
 	// ParseValue parses a string and returns a go value that represents it according to this type.
-	ParseValue(str *string) (types.Value, error)
+	ParseValue(ctx context.Context, vrw types.ValueReadWriter, str *string) (types.Value, error)
 
 	// Promote will promote the current TypeInfo to the largest representing TypeInfo of the same kind, such as Int8 to Int64.
 	Promote() TypeInfo
@@ -162,10 +164,6 @@ func FromSqlType(sqlType sql.Type) (TypeInfo, error) {
 		}
 		return &varStringType{stringType}, nil
 	case sqltypes.Blob:
-		//TODO: determine the storage format
-		if fmt.Sprintf("a") != "" { // always evaluates to true, compiler won't complain about unreachable code
-			return nil, fmt.Errorf(`"%v" has not yet been implemented`, sqlType.String())
-		}
 		stringType, ok := sqlType.(sql.StringType)
 		if !ok {
 			return nil, fmt.Errorf(`expected "StringType" from SQL basetype "Blob"`)
@@ -178,15 +176,11 @@ func FromSqlType(sqlType sql.Type) (TypeInfo, error) {
 		}
 		return &varStringType{stringType}, nil
 	case sqltypes.VarBinary:
-		//TODO: determine the storage format
-		if fmt.Sprintf("a") != "" { // always evaluates to true, compiler won't complain about unreachable code
-			return nil, fmt.Errorf(`"%v" has not yet been implemented`, sqlType.String())
-		}
 		stringType, ok := sqlType.(sql.StringType)
 		if !ok {
 			return nil, fmt.Errorf(`expected "StringType" from SQL basetype "VarBinary"`)
 		}
-		return &varBinaryType{stringType}, nil
+		return &inlineBlobType{stringType}, nil
 	case sqltypes.Char:
 		stringType, ok := sqlType.(sql.StringType)
 		if !ok {
@@ -194,15 +188,11 @@ func FromSqlType(sqlType sql.Type) (TypeInfo, error) {
 		}
 		return &varStringType{stringType}, nil
 	case sqltypes.Binary:
-		//TODO: determine the storage format
-		if fmt.Sprintf("a") != "" { // always evaluates to true, compiler won't complain about unreachable code
-			return nil, fmt.Errorf(`"%v" has not yet been implemented`, sqlType.String())
-		}
 		stringType, ok := sqlType.(sql.StringType)
 		if !ok {
 			return nil, fmt.Errorf(`expected "StringType" from SQL basetype "Binary"`)
 		}
-		return &varBinaryType{stringType}, nil
+		return &inlineBlobType{stringType}, nil
 	case sqltypes.Bit:
 		bitSQLType, ok := sqlType.(sql.BitType)
 		if !ok {
@@ -242,7 +232,7 @@ func FromTypeParams(id Identifier, params map[string]string) (TypeInfo, error) {
 	case FloatTypeIdentifier:
 		return CreateFloatTypeFromParams(params)
 	case InlineBlobTypeIdentifier:
-		return InlineBlobType, nil
+		return CreateInlineBlobTypeFromParams(params)
 	case IntTypeIdentifier:
 		return CreateIntTypeFromParams(params)
 	case SetTypeIdentifier:
@@ -271,10 +261,12 @@ func FromKind(kind types.NomsKind) TypeInfo {
 	switch kind {
 	case types.BoolKind:
 		return BoolType
+	case types.ChunkedStringKind:
+		return &varBinaryType{sql.LongBlob}
 	case types.FloatKind:
 		return Float64Type
 	case types.InlineBlobKind:
-		return InlineBlobType
+		return &inlineBlobType{sql.MustCreateBinary(sqltypes.VarBinary, math.MaxUint16)}
 	case types.IntKind:
 		return Int64Type
 	case types.NullKind:
@@ -298,12 +290,12 @@ func FromKind(kind types.NomsKind) TypeInfo {
 
 // Convert takes in a types.Value, as well as the source and destination TypeInfos, and
 // converts the TypeInfo into the applicable types.Value.
-func Convert(v types.Value, srcTi TypeInfo, destTi TypeInfo) (types.Value, error) {
+func Convert(ctx context.Context, vrw types.ValueReadWriter, v types.Value, srcTi TypeInfo, destTi TypeInfo) (types.Value, error) {
 	str, err := srcTi.FormatValue(v)
 	if err != nil {
 		return nil, err
 	}
-	val, err := destTi.ParseValue(str)
+	val, err := destTi.ParseValue(ctx, vrw, str)
 	if err != nil {
 		return nil, err
 	}

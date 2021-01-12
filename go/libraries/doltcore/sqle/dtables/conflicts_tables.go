@@ -137,7 +137,8 @@ type conflictDeleter struct {
 // Close is called.
 func (cd *conflictDeleter) Delete(ctx *sql.Context, r sql.Row) error {
 	cnfSch := cd.ct.rd.GetSchema()
-	cnfRow, err := sqlutil.SqlRowToDoltRow(cd.ct.tbl.Format(), r, cnfSch)
+	// We could use a test VRW, but as any values which use VRWs will already exist, we can potentially save on memory usage
+	cnfRow, err := sqlutil.SqlRowToDoltRow(ctx, cd.ct.tbl.ValueReadWriter(), r, cnfSch)
 
 	if err != nil {
 		return err

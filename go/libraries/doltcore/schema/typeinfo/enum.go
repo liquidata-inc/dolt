@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"encoding/gob"
 	"fmt"
 	"strings"
@@ -81,7 +82,7 @@ func (ti *enumType) ConvertNomsValueToValue(v types.Value) (interface{}, error) 
 }
 
 // ConvertValueToNomsValue implements TypeInfo interface.
-func (ti *enumType) ConvertValueToNomsValue(v interface{}) (types.Value, error) {
+func (ti *enumType) ConvertValueToNomsValue(ctx context.Context, vrw types.ValueReadWriter, v interface{}) (types.Value, error) {
 	if v == nil {
 		return types.NullValue, nil
 	}
@@ -167,7 +168,7 @@ func (ti *enumType) NomsKind() types.NomsKind {
 }
 
 // ParseValue implements TypeInfo interface.
-func (ti *enumType) ParseValue(str *string) (types.Value, error) {
+func (ti *enumType) ParseValue(ctx context.Context, vrw types.ValueReadWriter, str *string) (types.Value, error) {
 	if str == nil || *str == "" {
 		return types.NullValue, nil
 	}

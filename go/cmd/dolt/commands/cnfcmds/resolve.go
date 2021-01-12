@@ -178,7 +178,7 @@ func manualResolve(ctx context.Context, apr *argparser.ArgParseResults, dEnv *en
 		return errhand.BuildDError("error: failed to get schema").AddCause(err).Build()
 	}
 
-	keysToResolve, err := cli.ParseKeyValues(root.VRW().Format(), sch, args[1:])
+	keysToResolve, err := cli.ParseKeyValues(ctx, root.VRW(), sch, args[1:])
 
 	if err != nil {
 		return errhand.BuildDError("error: parsing command line").AddCause(err).Build()

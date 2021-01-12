@@ -17,12 +17,10 @@ package cnfcmds
 import (
 	"context"
 
-	eventsapi "github.com/dolthub/dolt/go/gen/proto/dolt/services/eventsapi/v1alpha1"
-	"github.com/dolthub/dolt/go/libraries/utils/filesys"
-
 	"github.com/dolthub/dolt/go/cmd/dolt/cli"
 	"github.com/dolthub/dolt/go/cmd/dolt/commands"
 	"github.com/dolthub/dolt/go/cmd/dolt/errhand"
+	eventsapi "github.com/dolthub/dolt/go/gen/proto/dolt/services/eventsapi/v1alpha1"
 	"github.com/dolthub/dolt/go/libraries/doltcore/doltdb"
 	"github.com/dolthub/dolt/go/libraries/doltcore/env"
 	"github.com/dolthub/dolt/go/libraries/doltcore/merge"
@@ -33,7 +31,9 @@ import (
 	"github.com/dolthub/dolt/go/libraries/doltcore/table/untyped/fwt"
 	"github.com/dolthub/dolt/go/libraries/doltcore/table/untyped/nullprinter"
 	"github.com/dolthub/dolt/go/libraries/utils/argparser"
+	"github.com/dolthub/dolt/go/libraries/utils/filesys"
 	"github.com/dolthub/dolt/go/libraries/utils/iohelp"
+	"github.com/dolthub/dolt/go/store/types"
 )
 
 var catDocs = cli.CommandDocumentationContent{
@@ -165,7 +165,8 @@ func printConflicts(ctx context.Context, root *doltdb.RootValue, tblNames []stri
 
 			defer cnfRd.Close()
 
-			splitter, err := merge.NewConflictSplitter(cnfRd.GetJoiner())
+			vrw := types.NewInternalValueStore() // Some types require a vrw but we're just displaying, so we use an internal store
+			splitter, err := merge.NewConflictSplitter(ctx, vrw, cnfRd.GetJoiner())
 
 			if err != nil {
 				return errhand.BuildDError("error: unable to handle schemas").AddCause(err).Build()

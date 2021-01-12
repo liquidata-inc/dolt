@@ -47,6 +47,7 @@ import (
 	"github.com/dolthub/dolt/go/libraries/utils/mathutil"
 	"github.com/dolthub/dolt/go/libraries/utils/set"
 	"github.com/dolthub/dolt/go/store/atomicerr"
+	"github.com/dolthub/dolt/go/store/types"
 )
 
 type diffOutput int
@@ -662,7 +663,8 @@ func diffRows(ctx context.Context, td diff.TableDelta, dArgs *diffArgs) errhand.
 		return errhand.BuildDError("").AddCause(err).Build()
 	}
 
-	unionSch, ds, verr := createSplitter(fromSch, toSch, joiner, dArgs)
+	vrw := types.NewInternalValueStore() // We don't want to persist anything, so we use an internal store
+	unionSch, ds, verr := createSplitter(ctx, vrw, fromSch, toSch, joiner, dArgs)
 	if verr != nil {
 		return verr
 	}
@@ -822,7 +824,7 @@ func mapTagToColName(sch, untypedUnionSch schema.Schema) (map[uint64]string, err
 	return tagToCol, nil
 }
 
-func createSplitter(fromSch schema.Schema, toSch schema.Schema, joiner *rowconv.Joiner, dArgs *diffArgs) (schema.Schema, *diff.DiffSplitter, errhand.VerboseError) {
+func createSplitter(ctx context.Context, vrw types.ValueReadWriter, fromSch schema.Schema, toSch schema.Schema, joiner *rowconv.Joiner, dArgs *diffArgs) (schema.Schema, *diff.DiffSplitter, errhand.VerboseError) {
 
 	var unionSch schema.Schema
 	if dArgs.diffOutput == TabularDiffOutput {
@@ -855,7 +857,7 @@ func createSplitter(fromSch schema.Schema, toSch schema.Schema, joiner *rowconv.
 			return nil, nil, errhand.BuildDError("Error creating unioned mapping").AddCause(err).Build()
 		}
 
-		newToUnionConv, _ = rowconv.NewRowConverter(newToUnionMapping)
+		newToUnionConv, _ = rowconv.NewRowConverter(ctx, vrw, newToUnionMapping)
 	}
 
 	oldToUnionConv := rowconv.IdentityConverter
@@ -866,7 +868,7 @@ func createSplitter(fromSch schema.Schema, toSch schema.Schema, joiner *rowconv.
 			return nil, nil, errhand.BuildDError("Error creating unioned mapping").AddCause(err).Build()
 		}
 
-		oldToUnionConv, _ = rowconv.NewRowConverter(oldToUnionMapping)
+		oldToUnionConv, _ = rowconv.NewRowConverter(ctx, vrw, oldToUnionMapping)
 	}
 
 	ds := diff.NewDiffSplitter(joiner, oldToUnionConv, newToUnionConv)

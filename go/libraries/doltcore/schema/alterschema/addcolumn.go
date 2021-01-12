@@ -112,7 +112,7 @@ func updateTableWithNewSchema(ctx context.Context, tblName string, tbl *doltdb.T
 		if err != nil {
 			return true, err
 		}
-		newRow, err := sqlutil.ApplyDefaults(ctx, newSchema, newSqlSchema, []int{columnIndex}, oldRow)
+		newRow, err := sqlutil.ApplyDefaults(ctx, vrw, newSchema, newSqlSchema, []int{columnIndex}, oldRow)
 		if err != nil {
 			return true, err
 		}

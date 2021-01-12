@@ -236,12 +236,12 @@ func leastPermissiveChronoType(strVal string) typeinfo.TypeInfo {
 	if strVal == "" {
 		return typeinfo.UnknownType
 	}
-	_, err := typeinfo.TimeType.ParseValue(&strVal)
+	_, err := typeinfo.TimeType.ParseValue(context.Background(), nil, &strVal)
 	if err == nil {
 		return typeinfo.TimeType
 	}
 
-	dt, err := typeinfo.DatetimeType.ParseValue(&strVal)
+	dt, err := typeinfo.DatetimeType.ParseValue(context.Background(), nil, &strVal)
 	if err != nil {
 		return typeinfo.UnknownType
 	}

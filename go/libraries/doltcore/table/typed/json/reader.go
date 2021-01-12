@@ -31,7 +31,7 @@ import (
 var ReadBufSize = 256 * 1024
 
 type JSONReader struct {
-	nbf        *types.NomsBinFormat
+	vrw        types.ValueReadWriter
 	closer     io.Closer
 	sch        schema.Schema
 	jsonStream *jstream.Decoder
@@ -39,23 +39,23 @@ type JSONReader struct {
 	sampleRow  row.Row
 }
 
-func OpenJSONReader(nbf *types.NomsBinFormat, path string, fs filesys.ReadableFS, sch schema.Schema) (*JSONReader, error) {
+func OpenJSONReader(vrw types.ValueReadWriter, path string, fs filesys.ReadableFS, sch schema.Schema) (*JSONReader, error) {
 	r, err := fs.OpenForRead(path)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewJSONReader(nbf, r, sch)
+	return NewJSONReader(vrw, r, sch)
 }
 
-func NewJSONReader(nbf *types.NomsBinFormat, r io.ReadCloser, sch schema.Schema) (*JSONReader, error) {
+func NewJSONReader(vrw types.ValueReadWriter, r io.ReadCloser, sch schema.Schema) (*JSONReader, error) {
 	if sch == nil {
 		return nil, errors.New("schema must be provided to JsonReader")
 	}
 
 	decoder := jstream.NewDecoder(r, 2) // extract JSON values at a depth level of 1
 
-	return &JSONReader{nbf: nbf, closer: r, sch: sch, jsonStream: decoder}, nil
+	return &JSONReader{vrw: vrw, closer: r, sch: sch, jsonStream: decoder}, nil
 }
 
 // Close should release resources being held
@@ -107,10 +107,10 @@ func (r *JSONReader) ReadRow(ctx context.Context) (row.Row, error) {
 	if !ok {
 		return nil, fmt.Errorf("Unexpected json value: %v", row.Value)
 	}
-	return r.convToRow(m)
+	return r.convToRow(ctx, m)
 }
 
-func (r *JSONReader) convToRow(rowMap map[string]interface{}) (row.Row, error) {
+func (r *JSONReader) convToRow(ctx context.Context, rowMap map[string]interface{}) (row.Row, error) {
 	allCols := r.sch.GetAllCols()
 
 	taggedVals := make(row.TaggedValues, allCols.Size())
@@ -123,7 +123,7 @@ func (r *JSONReader) convToRow(rowMap map[string]interface{}) (row.Row, error) {
 
 		switch v.(type) {
 		case int, string, bool, float64:
-			taggedVals[col.Tag], _ = col.TypeInfo.ConvertValueToNomsValue(v)
+			taggedVals[col.Tag], _ = col.TypeInfo.ConvertValueToNomsValue(ctx, r.vrw, v)
 		}
 
 	}
@@ -139,5 +139,5 @@ func (r *JSONReader) convToRow(rowMap map[string]interface{}) (row.Row, error) {
 		return nil, err
 	}
 
-	return row.New(r.nbf, r.sch, taggedVals)
+	return row.New(r.vrw.Format(), r.sch, taggedVals)
 }

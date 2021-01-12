@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -101,7 +102,8 @@ func TestYearConvertValueToNomsValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf(`%v %v`, YearType.String(), test.input), func(t *testing.T) {
-			output, err := YearType.ConvertValueToNomsValue(test.input)
+			vrw := types.NewInternalValueStore()
+			output, err := YearType.ConvertValueToNomsValue(context.Background(), vrw, test.input)
 			if !test.expectedErr {
 				require.NoError(t, err)
 				assert.Equal(t, test.output, output)
@@ -188,7 +190,8 @@ func TestYearParseValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf(`%v %v`, YearType.String(), test.input), func(t *testing.T) {
-			output, err := YearType.ParseValue(&test.input)
+			vrw := types.NewInternalValueStore()
+			output, err := YearType.ParseValue(context.Background(), vrw, &test.input)
 			if !test.expectedErr {
 				require.NoError(t, err)
 				assert.Equal(t, test.output, output)

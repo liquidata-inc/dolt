@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"testing"
@@ -133,7 +134,8 @@ func TestDecimalConvertValueToNomsValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf(`%v %v`, test.typ.String(), test.input), func(t *testing.T) {
-			output, err := test.typ.ConvertValueToNomsValue(test.input)
+			vrw := types.NewInternalValueStore()
+			output, err := test.typ.ConvertValueToNomsValue(context.Background(), vrw, test.input)
 			if !test.expectedErr {
 				require.NoError(t, err)
 				assert.True(t, test.output.Equals(output))
@@ -261,7 +263,8 @@ func TestDecimalParseValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf(`%v %v`, test.typ.String(), test.input), func(t *testing.T) {
-			output, err := test.typ.ParseValue(&test.input)
+			vrw := types.NewInternalValueStore()
+			output, err := test.typ.ParseValue(context.Background(), vrw, &test.input)
 			if !test.expectedErr {
 				require.NoError(t, err)
 				assert.True(t, test.output.Equals(output))
@@ -341,7 +344,8 @@ func TestDecimalMarshal(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.precision, test.scale, test.val), func(t *testing.T) {
 			typ := &decimalType{sql.MustCreateDecimalType(test.precision, test.scale)}
-			val, err := typ.ConvertValueToNomsValue(test.val)
+			vrw := types.NewInternalValueStore()
+			val, err := typ.ConvertValueToNomsValue(context.Background(), vrw, test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
@@ -549,13 +553,14 @@ func TestDecimalRoundTrip(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf(`%v %v %v`, test.typ.String(), test.input, test.output), func(t *testing.T) {
-			parsed, err := test.typ.ConvertValueToNomsValue(test.input)
+			vrw := types.NewInternalValueStore()
+			parsed, err := test.typ.ConvertValueToNomsValue(context.Background(), vrw, test.input)
 			if !test.expectedErr {
 				require.NoError(t, err)
 				output, err := test.typ.ConvertNomsValueToValue(parsed)
 				require.NoError(t, err)
 				assert.Equal(t, test.output, output)
-				parsed2, err := test.typ.ParseValue(&test.input)
+				parsed2, err := test.typ.ParseValue(context.Background(), vrw, &test.input)
 				require.NoError(t, err)
 				assert.Equal(t, parsed, parsed2)
 				output2, err := test.typ.FormatValue(parsed2)
@@ -563,7 +568,7 @@ func TestDecimalRoundTrip(t *testing.T) {
 				assert.Equal(t, test.output, *output2)
 			} else {
 				assert.Error(t, err)
-				_, err = test.typ.ParseValue(&test.input)
+				_, err = test.typ.ParseValue(context.Background(), vrw, &test.input)
 				assert.Error(t, err)
 			}
 		})

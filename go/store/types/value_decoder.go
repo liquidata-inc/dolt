@@ -315,6 +315,8 @@ func (r *valueDecoder) readValue(nbf *NomsBinFormat) (Value, error) {
 		return r.readStruct(nbf)
 	case TupleKind:
 		return r.readTuple(nbf)
+	case ChunkedStringKind:
+		return r.readChunkedString(nbf)
 	case TypeKind:
 		r.skipKind()
 		return r.readType()
@@ -395,6 +397,11 @@ func (r *valueDecoder) skipValue(nbf *NomsBinFormat) error {
 		if err != nil {
 			return err
 		}
+	case ChunkedStringKind:
+		err := r.skipChunkedString(nbf)
+		if err != nil {
+			return err
+		}
 	case TypeKind:
 		r.skipKind()
 		err := r.skipType()
@@ -448,6 +455,13 @@ func (r *valueDecoder) readTypeOfValue(nbf *NomsBinFormat) (*Type, error) {
 		}
 		d.Chk.True(val != nil)
 		return val.typeOf()
+	case ChunkedStringKind:
+		val, err := r.readValue(nbf)
+		if err != nil {
+			return nil, err
+		}
+		d.Chk.True(val != nil)
+		return val.typeOf()
 	case TypeKind:
 		r.skipKind()
 		err := r.skipType()
@@ -482,7 +496,7 @@ func (r *valueDecoder) isValueSameTypeForSure(nbf *NomsBinFormat, t *Type) (bool
 	}
 
 	switch k {
-	case ListKind, MapKind, RefKind, SetKind, TupleKind:
+	case ListKind, MapKind, RefKind, SetKind, TupleKind, ChunkedStringKind:
 		// TODO: Maybe do some simple cases here too. Performance metrics should determine
 		// what is going to be worth doing.
 		// https://github.com/attic-labs/noms/issues/3776
@@ -534,12 +548,20 @@ func (r *valueDecoder) readTuple(nbf *NomsBinFormat) (Value, error) {
 	return readTuple(nbf, r)
 }
 
+func (r *valueDecoder) readChunkedString(nbf *NomsBinFormat) (Value, error) {
+	return readChunkedString(nbf, r)
+}
+
 func (r *valueDecoder) skipStruct(nbf *NomsBinFormat) error {
 	return skipStruct(nbf, r)
 }
 
 func (r *valueDecoder) skipTuple(nbf *NomsBinFormat) error {
 	return skipTuple(nbf, r)
+}
+
+func (r *valueDecoder) skipChunkedString(nbf *NomsBinFormat) error {
+	return skipChunkedString(nbf, r)
 }
 
 func (r *valueDecoder) readOrderedKey(nbf *NomsBinFormat) (orderedKey, error) {
@@ -640,6 +662,12 @@ func (r *typedBinaryNomsReader) readTypeInner(seenStructs map[string]*Type) (*Ty
 		}
 
 		return makeCompoundType(TupleKind, t)
+	case ChunkedStringKind:
+		t, err := r.readTypeInner(seenStructs)
+		if err != nil {
+			return nil, err
+		}
+		return makeCompoundType(ChunkedStringKind, t)
 	case UnionKind:
 		t, err := r.readUnionType(seenStructs)
 
@@ -663,7 +691,7 @@ func (r *typedBinaryNomsReader) readTypeInner(seenStructs map[string]*Type) (*Ty
 func (r *typedBinaryNomsReader) skipTypeInner() {
 	k := r.readKind()
 	switch k {
-	case ListKind, RefKind, SetKind, TupleKind:
+	case ListKind, RefKind, SetKind, TupleKind, ChunkedStringKind:
 		r.skipTypeInner()
 	case MapKind:
 		r.skipTypeInner()

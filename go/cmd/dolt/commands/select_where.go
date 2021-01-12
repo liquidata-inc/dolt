@@ -15,6 +15,7 @@
 package commands
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -73,7 +74,8 @@ func ParseWhere(sch schema.Schema, whereClause string) (FilterFn, error) {
 			val = types.String(valStr)
 		} else {
 			var err error
-			val, err = cols[0].TypeInfo.ParseValue(&valStr)
+			vrw := types.NewInternalValueStore() // We don't want to persist anything, so we use an internal VRW
+			val, err = cols[0].TypeInfo.ParseValue(context.Background(), vrw, &valStr)
 			if err != nil {
 				return nil, errors.New("unable to convert '" + valStr + "' to " + col.TypeInfo.String())
 			}

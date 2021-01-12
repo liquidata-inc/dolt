@@ -15,6 +15,7 @@
 package rowconv
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dolthub/dolt/go/libraries/doltcore/row"
@@ -39,7 +40,7 @@ func newIdentityConverter(mapping *FieldMapping) *RowConverter {
 }
 
 // NewRowConverter creates a row converter from a given FieldMapping.
-func NewRowConverter(mapping *FieldMapping) (*RowConverter, error) {
+func NewRowConverter(ctx context.Context, vrw types.ValueReadWriter, mapping *FieldMapping) (*RowConverter, error) {
 	if nec, err := isNecessary(mapping.SrcSch, mapping.DestSch, mapping.SrcToDest); err != nil {
 		return nil, err
 	} else if !nec {
@@ -73,7 +74,7 @@ func NewRowConverter(mapping *FieldMapping) (*RowConverter, error) {
 			}
 		} else {
 			convFuncs[srcTag] = func(v types.Value) (types.Value, error) {
-				return typeinfo.Convert(v, srcCol.TypeInfo, destCol.TypeInfo)
+				return typeinfo.Convert(ctx, vrw, v, srcCol.TypeInfo, destCol.TypeInfo)
 			}
 		}
 	}
@@ -82,7 +83,7 @@ func NewRowConverter(mapping *FieldMapping) (*RowConverter, error) {
 }
 
 // NewImportRowConverter creates a row converter from a given FieldMapping specifically for importing.
-func NewImportRowConverter(mapping *FieldMapping) (*RowConverter, error) {
+func NewImportRowConverter(ctx context.Context, vrw types.ValueReadWriter, mapping *FieldMapping) (*RowConverter, error) {
 	if nec, err := isNecessary(mapping.SrcSch, mapping.DestSch, mapping.SrcToDest); err != nil {
 		return nil, err
 	} else if !nec {
@@ -117,15 +118,15 @@ func NewImportRowConverter(mapping *FieldMapping) (*RowConverter, error) {
 		} else if destCol.TypeInfo.Equals(typeinfo.PseudoBoolType) || destCol.TypeInfo.Equals(typeinfo.Int8Type) {
 			// BIT(1) and BOOLEAN (MySQL alias for TINYINT or Int8) are both logical stand-ins for a bool type
 			convFuncs[srcTag] = func(v types.Value) (types.Value, error) {
-				intermediateVal, err := typeinfo.Convert(v, srcCol.TypeInfo, typeinfo.BoolType)
+				intermediateVal, err := typeinfo.Convert(ctx, vrw, v, srcCol.TypeInfo, typeinfo.BoolType)
 				if err != nil {
 					return nil, err
 				}
-				return typeinfo.Convert(intermediateVal, typeinfo.BoolType, destCol.TypeInfo)
+				return typeinfo.Convert(ctx, vrw, intermediateVal, typeinfo.BoolType, destCol.TypeInfo)
 			}
 		} else {
 			convFuncs[srcTag] = func(v types.Value) (types.Value, error) {
-				return typeinfo.Convert(v, srcCol.TypeInfo, destCol.TypeInfo)
+				return typeinfo.Convert(ctx, vrw, v, srcCol.TypeInfo, destCol.TypeInfo)
 			}
 		}
 	}

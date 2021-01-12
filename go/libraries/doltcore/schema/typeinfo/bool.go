@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strconv"
@@ -47,7 +48,7 @@ func (ti *boolType) ConvertNomsValueToValue(v types.Value) (interface{}, error) 
 }
 
 // ConvertValueToNomsValue implements TypeInfo interface.
-func (ti *boolType) ConvertValueToNomsValue(v interface{}) (types.Value, error) {
+func (ti *boolType) ConvertValueToNomsValue(ctx context.Context, vrw types.ValueReadWriter, v interface{}) (types.Value, error) {
 	switch val := v.(type) {
 	case nil:
 		return types.NullValue, nil
@@ -88,7 +89,7 @@ func (ti *boolType) ConvertValueToNomsValue(v interface{}) (types.Value, error) 
 		}
 		return types.Bool(valInt != 0), nil
 	case []byte:
-		return ti.ConvertValueToNomsValue(string(val))
+		return ti.ConvertValueToNomsValue(context.Background(), nil, string(val))
 	default:
 		return nil, fmt.Errorf(`"%v" cannot convert value "%v" of type "%T" as it is invalid`, ti.String(), v, v)
 	}
@@ -142,11 +143,11 @@ func (ti *boolType) NomsKind() types.NomsKind {
 }
 
 // ParseValue implements TypeInfo interface.
-func (ti *boolType) ParseValue(str *string) (types.Value, error) {
+func (ti *boolType) ParseValue(ctx context.Context, vrw types.ValueReadWriter, str *string) (types.Value, error) {
 	if str == nil || *str == "" {
 		return types.NullValue, nil
 	}
-	return ti.ConvertValueToNomsValue(*str)
+	return ti.ConvertValueToNomsValue(context.Background(), nil, *str)
 }
 
 // Promote implements TypeInfo interface.

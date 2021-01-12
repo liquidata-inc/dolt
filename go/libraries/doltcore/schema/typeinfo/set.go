@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"encoding/gob"
 	"fmt"
 	"strings"
@@ -81,7 +82,7 @@ func (ti *setType) ConvertNomsValueToValue(v types.Value) (interface{}, error) {
 }
 
 // ConvertValueToNomsValue implements TypeInfo interface.
-func (ti *setType) ConvertValueToNomsValue(v interface{}) (types.Value, error) {
+func (ti *setType) ConvertValueToNomsValue(ctx context.Context, vrw types.ValueReadWriter, v interface{}) (types.Value, error) {
 	if v == nil {
 		return types.NullValue, nil
 	}
@@ -167,7 +168,7 @@ func (ti *setType) NomsKind() types.NomsKind {
 }
 
 // ParseValue implements TypeInfo interface.
-func (ti *setType) ParseValue(str *string) (types.Value, error) {
+func (ti *setType) ParseValue(ctx context.Context, vrw types.ValueReadWriter, str *string) (types.Value, error) {
 	if str == nil {
 		return types.NullValue, nil
 	}

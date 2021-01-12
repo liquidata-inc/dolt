@@ -76,7 +76,7 @@ func NewAsyncDiffer(bufferedDiffs int) *AsyncDiffer {
 
 func tableDontDescendLists(v1, v2 types.Value) bool {
 	kind := v1.Kind()
-	return !types.IsPrimitiveKind(kind) && kind != types.TupleKind && kind == v2.Kind() && kind != types.RefKind
+	return !types.IsPrimitiveKind(kind) && kind != types.TupleKind && kind != types.ChunkedStringKind && kind == v2.Kind() && kind != types.RefKind
 }
 
 func (ad *AsyncDiffer) Start(ctx context.Context, from, to types.Map) {

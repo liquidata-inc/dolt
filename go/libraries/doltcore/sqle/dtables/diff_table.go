@@ -15,6 +15,7 @@
 package dtables
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -338,13 +339,15 @@ func (dp diffPartition) getRowIter(ctx *sql.Context, ddb *doltdb.DoltDB, ss *sch
 		return nil, err
 	}
 
-	fromConv, err := rowConvForSchema(ss, fromSch)
+	vrw := types.NewInternalValueStore() // We're displaying here, so all values that require a VRW will use an internal one
+
+	fromConv, err := rowConvForSchema(ctx, vrw, ss, fromSch)
 
 	if err != nil {
 		return nil, err
 	}
 
-	toConv, err := rowConvForSchema(ss, toSch)
+	toConv, err := rowConvForSchema(ctx, vrw, ss, toSch)
 
 	if err != nil {
 		return nil, err
@@ -557,7 +560,7 @@ func (dp *diffPartitions) Close() error {
 }
 
 // creates a RowConverter for transforming rows with the the given schema to this super schema.
-func rowConvForSchema(ss *schema.SuperSchema, sch schema.Schema) (*rowconv.RowConverter, error) {
+func rowConvForSchema(ctx context.Context, vrw types.ValueReadWriter, ss *schema.SuperSchema, sch schema.Schema) (*rowconv.RowConverter, error) {
 	eq, err := schema.SchemasAreEqual(sch, schema.EmptySchema)
 	if err != nil {
 		return nil, err
@@ -584,5 +587,5 @@ func rowConvForSchema(ss *schema.SuperSchema, sch schema.Schema) (*rowconv.RowCo
 		return nil, err
 	}
 
-	return rowconv.NewRowConverter(fm)
+	return rowconv.NewRowConverter(ctx, vrw, fm)
 }

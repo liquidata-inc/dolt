@@ -90,7 +90,6 @@ DELIM
 }
 
 @test "types: BINARY(10)" {
-    skip "This is not yet persisted in dolt"
     dolt sql <<SQL
 CREATE TABLE test (
   pk BIGINT NOT NULL,
@@ -139,7 +138,6 @@ SQL
 }
 
 @test "types: BLOB" {
-    skip "This is not yet persisted in dolt"
     dolt sql <<SQL
 CREATE TABLE test (
   pk BIGINT NOT NULL,
@@ -646,7 +644,6 @@ SQL
 }
 
 @test "types: LONGBLOB" {
-    skip "This is not yet persisted in dolt"
     dolt sql <<SQL
 CREATE TABLE test (
   pk BIGINT NOT NULL,
@@ -689,7 +686,6 @@ SQL
 }
 
 @test "types: MEDIUMBLOB" {
-    skip "This is not yet persisted in dolt"
     dolt sql <<SQL
 CREATE TABLE test (
   pk BIGINT NOT NULL,
@@ -1067,7 +1063,6 @@ SQL
 }
 
 @test "types: TINYBLOB" {
-    skip "This is not yet persisted in dolt"
     dolt sql <<SQL
 CREATE TABLE test (
   pk BIGINT NOT NULL,
@@ -1160,7 +1155,6 @@ SQL
 }
 
 @test "types: VARBINARY(10)" {
-    skip "This is not yet persisted in dolt"
     dolt sql <<SQL
 CREATE TABLE test (
   pk BIGINT NOT NULL,

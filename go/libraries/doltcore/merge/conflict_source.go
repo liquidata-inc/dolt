@@ -83,14 +83,14 @@ func NewConflictReader(ctx context.Context, tbl *doltdb.Table) (*ConflictReader,
 	return &ConflictReader{confItr, joiner, tbl.Format()}, nil
 }
 
-func tagMappingConverter(src, dest schema.Schema) (*rowconv.RowConverter, error) {
+func tagMappingConverter(ctx context.Context, vrw types.ValueReadWriter, src, dest schema.Schema) (*rowconv.RowConverter, error) {
 	mapping, err := rowconv.TagMapping(src, dest)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return rowconv.NewRowConverter(mapping)
+	return rowconv.NewRowConverter(ctx, vrw, mapping)
 }
 
 // GetSchema gets the schema of the rows that this reader will return

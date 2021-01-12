@@ -15,6 +15,7 @@
 package sqle
 
 import (
+	"context"
 	"errors"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -257,7 +258,8 @@ func (di *doltIndex) keysToTuple(keys []interface{}) (types.Tuple, error) {
 	for i, col := range di.cols {
 		// As an example, if our TypeInfo is Int8, we should not fail to create a tuple if we are returning all keys
 		// that have a value of less than 9001, thus we promote the TypeInfo to the widest type.
-		val, err := col.TypeInfo.Promote().ConvertValueToNomsValue(keys[i])
+		vrw := types.NewInternalValueStore() // We are creating index keys, therefore we can use an internal store
+		val, err := col.TypeInfo.Promote().ConvertValueToNomsValue(context.Background(), vrw, keys[i])
 		if err != nil {
 			return types.EmptyTuple(nbf), err
 		}

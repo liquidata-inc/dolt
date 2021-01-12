@@ -45,7 +45,7 @@ func TestKeylessTableReader(t *testing.T) {
 	makeBag := func(vrw types.ValueReadWriter, sch schema.Schema, rows ...bagRow) types.Map {
 		var tups []types.Value
 		for _, r := range rows {
-			k, v, err := encodeKeylessSqlRows(vrw.Format(), sch, r.vals, r.cardinality)
+			k, v, err := encodeKeylessSqlRows(vrw, sch, r.vals, r.cardinality)
 			require.NoError(t, err)
 			require.NotNil(t, k)
 			require.NotNil(t, v)
@@ -151,7 +151,7 @@ func TestKeylessTableReader(t *testing.T) {
 	}
 }
 
-func encodeKeylessSqlRows(nbf *types.NomsBinFormat, sch schema.Schema, r sql.Row, cardinality uint64) (key, val types.Tuple, err error) {
+func encodeKeylessSqlRows(vrw types.ValueReadWriter, sch schema.Schema, r sql.Row, cardinality uint64) (key, val types.Tuple, err error) {
 	if len(r) != sch.GetAllCols().Size() {
 		rl, sl := len(r), sch.GetAllCols().Size()
 		return key, val, fmt.Errorf("row length (%d) != schema length (%d)", rl, sl)
@@ -175,7 +175,7 @@ func encodeKeylessSqlRows(nbf *types.NomsBinFormat, sch schema.Schema, r sql.Row
 		v := r[idx]
 		if v != nil {
 			vals[2*idx+2] = types.Uint(tag)
-			vals[2*idx+3], err = col.TypeInfo.ConvertValueToNomsValue(v)
+			vals[2*idx+3], err = col.TypeInfo.ConvertValueToNomsValue(context.Background(), vrw, v)
 		}
 		idx++
 
@@ -186,17 +186,17 @@ func encodeKeylessSqlRows(nbf *types.NomsBinFormat, sch schema.Schema, r sql.Row
 		return key, val, err
 	}
 
-	id, err := types.UUIDHashedFromValues(nbf, vals[2:]...)
+	id, err := types.UUIDHashedFromValues(vrw.Format(), vals[2:]...)
 	if err != nil {
 		return key, val, err
 	}
 
-	key, err = types.NewTuple(nbf, id)
+	key, err = types.NewTuple(vrw.Format(), id)
 	if err != nil {
 		return key, val, err
 	}
 
-	val, err = types.NewTuple(nbf, vals...)
+	val, err = types.NewTuple(vrw.Format(), vals...)
 	if err != nil {
 		return key, val, err
 	}

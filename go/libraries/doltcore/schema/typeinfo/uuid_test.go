@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -128,7 +129,8 @@ func TestUuidConvertValueToNomsValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf(`%v %v`, UuidType.String(), test.input), func(t *testing.T) {
-			output, err := UuidType.ConvertValueToNomsValue(test.input)
+			vrw := types.NewInternalValueStore()
+			output, err := UuidType.ConvertValueToNomsValue(context.Background(), vrw, test.input)
 			if !test.expectedErr {
 				require.NoError(t, err)
 				assert.Equal(t, test.output, output, "%v\n%v", test.output, output)
@@ -192,7 +194,8 @@ func TestUuidParseValue(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf(`%v %v`, UuidType.String(), test.input), func(t *testing.T) {
-			output, err := UuidType.ParseValue(&test.input)
+			vrw := types.NewInternalValueStore()
+			output, err := UuidType.ParseValue(context.Background(), vrw, &test.input)
 			if !test.expectedErr {
 				require.NoError(t, err)
 				assert.Equal(t, test.output, output)

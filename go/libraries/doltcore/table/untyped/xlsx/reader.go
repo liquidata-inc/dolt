@@ -19,7 +19,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"io/ioutil"
 
 	"github.com/dolthub/dolt/go/libraries/doltcore/row"
 	"github.com/dolthub/dolt/go/libraries/doltcore/schema"
@@ -39,36 +38,7 @@ type XLSXReader struct {
 	rows   []row.Row
 }
 
-func OpenXLSXReaderFromBinary(nbf *types.NomsBinFormat, r io.ReadCloser, info *XLSXFileInfo) (*XLSXReader, error) {
-	br := bufio.NewReaderSize(r, ReadBufSize)
-
-	contents, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	colStrs, err := getColHeadersFromBinary(contents, info.SheetName)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := getXlsxRowsFromBinary(contents, info.SheetName)
-	if err != nil {
-		return nil, err
-	}
-
-	_, sch := untyped.NewUntypedSchema(colStrs...)
-
-	decodedRows, err := decodeXLSXRows(nbf, data, sch)
-	if err != nil {
-		r.Close()
-		return nil, err
-	}
-
-	return &XLSXReader{r, br, info, sch, 0, decodedRows}, nil
-}
-
-func OpenXLSXReader(nbf *types.NomsBinFormat, path string, fs filesys.ReadableFS, info *XLSXFileInfo) (*XLSXReader, error) {
+func OpenXLSXReader(ctx context.Context, vrw types.ValueReadWriter, path string, fs filesys.ReadableFS, info *XLSXFileInfo) (*XLSXReader, error) {
 	r, err := fs.OpenForRead(path)
 
 	if err != nil {
@@ -86,7 +56,7 @@ func OpenXLSXReader(nbf *types.NomsBinFormat, path string, fs filesys.ReadableFS
 
 	_, sch := untyped.NewUntypedSchema(colStrs...)
 
-	decodedRows, err := decodeXLSXRows(nbf, data, sch)
+	decodedRows, err := decodeXLSXRows(ctx, vrw, data, sch)
 	if err != nil {
 		r.Close()
 		return nil, err

@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -34,7 +35,7 @@ func (ti *unknownImpl) ConvertNomsValueToValue(types.Value) (interface{}, error)
 }
 
 // ConvertValueToNomsValue implements TypeInfo interface.
-func (ti *unknownImpl) ConvertValueToNomsValue(interface{}) (types.Value, error) {
+func (ti *unknownImpl) ConvertValueToNomsValue(context.Context, types.ValueReadWriter, interface{}) (types.Value, error) {
 	return nil, fmt.Errorf(`"Unknown" cannot convert any go value to a Noms value`)
 }
 
@@ -69,7 +70,7 @@ func (ti *unknownImpl) NomsKind() types.NomsKind {
 }
 
 // ParseValue implements TypeInfo interface.
-func (ti *unknownImpl) ParseValue(*string) (types.Value, error) {
+func (ti *unknownImpl) ParseValue(context.Context, types.ValueReadWriter, *string) (types.Value, error) {
 	return nil, fmt.Errorf(`"Unknown" cannot convert any strings to a Noms value`)
 }
 

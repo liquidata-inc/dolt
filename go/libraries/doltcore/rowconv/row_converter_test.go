@@ -47,7 +47,8 @@ func TestRowConverter(t *testing.T) {
 
 	assert.NoError(t, err)
 
-	rConv, err := NewRowConverter(mapping)
+	vrw := types.NewInternalValueStore()
+	rConv, err := NewRowConverter(context.Background(), vrw, mapping)
 
 	if err != nil {
 		t.Fatal("Error creating row converter")
@@ -55,7 +56,7 @@ func TestRowConverter(t *testing.T) {
 
 	id, _ := uuid.NewRandom()
 	tt := types.Timestamp(time.Now())
-	inRow, err := row.New(types.Format_7_18, srcSch, row.TaggedValues{
+	inRow, err := row.New(vrw.Format(), srcSch, row.TaggedValues{
 		0: types.UUID(id),
 		1: types.Float(1.25),
 		2: types.Uint(12345678),
@@ -70,7 +71,7 @@ func TestRowConverter(t *testing.T) {
 	assert.NoError(t, err)
 
 	destSch := mapping.DestSch
-	expected, err := row.New(types.Format_7_18, destSch, row.TaggedValues{
+	expected, err := row.New(vrw.Format(), destSch, row.TaggedValues{
 		0: types.String(id.String()),
 		1: types.String("1.25"),
 		2: types.String("12345678"),
@@ -94,7 +95,8 @@ func TestUnneccessaryConversion(t *testing.T) {
 		t.Error(err)
 	}
 
-	rconv, err := NewRowConverter(mapping)
+	vrw := types.NewInternalValueStore()
+	rconv, err := NewRowConverter(context.Background(), vrw, mapping)
 
 	if !rconv.IdentityConverter {
 		t.Error("expected identity converter")
@@ -114,9 +116,10 @@ func TestSpecialBoolHandling(t *testing.T) {
 
 	mapping, err := TagMapping(untypedSch, sch)
 	require.NoError(t, err)
-	rconv, err := NewImportRowConverter(mapping)
+	vrw := types.NewInternalValueStore()
+	rconv, err := NewImportRowConverter(context.Background(), vrw, mapping)
 	require.NoError(t, err)
-	inRow, err := row.New(types.Format_7_18, untypedSch, row.TaggedValues{
+	inRow, err := row.New(vrw.Format(), untypedSch, row.TaggedValues{
 		0: types.String("76"),
 		1: types.String("true"),
 	})
@@ -125,14 +128,14 @@ func TestSpecialBoolHandling(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, outData)
 
-	expected, err := row.New(types.Format_7_18, mapping.DestSch, row.TaggedValues{
+	expected, err := row.New(vrw.Format(), mapping.DestSch, row.TaggedValues{
 		0: types.Int(76),
 		1: types.Uint(1),
 	})
 	require.NoError(t, err)
 	assert.True(t, row.AreEqual(outData, expected, mapping.DestSch))
 
-	rconvNoHandle, err := NewRowConverter(mapping)
+	rconvNoHandle, err := NewRowConverter(context.Background(), vrw, mapping)
 	require.NoError(t, err)
 	results, errStr := rconvNoHandle.Convert(inRow)
 	assert.Nil(t, results)

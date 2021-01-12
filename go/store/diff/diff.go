@@ -422,7 +422,7 @@ func (d differ) diffOrdered(ctx context.Context, p types.Path, ppf pathPartFunc,
 // shouldDescend returns true, if Value is not primitive or is a Ref.
 func ShouldDescend(v1, v2 types.Value) bool {
 	kind := v1.Kind()
-	return !types.IsPrimitiveKind(kind) && kind == v2.Kind() && kind != types.RefKind && kind != types.TupleKind
+	return !types.IsPrimitiveKind(kind) && kind == v2.Kind() && kind != types.RefKind && kind != types.TupleKind && kind != types.ChunkedStringKind
 }
 
 func (d differ) sendDiff(ctx context.Context, dif Difference) error {

@@ -54,6 +54,12 @@ func (ms *MemoryStorage) NewView() ChunkStore {
 	return &MemoryStoreView{storage: ms, rootHash: ms.rootHash, version: version}
 }
 
+// NewViewWithVersion vends a MemoryStoreView backed by this MemoryStorage. It's
+// initialized with the currently "persisted" root. Uses the default format.
+func (ms *MemoryStorage) NewViewWithDefaultFormat() ChunkStore {
+	return &MemoryStoreView{storage: ms, rootHash: ms.rootHash, version: constants.FormatDefaultString}
+}
+
 // Get retrieves the Chunk with the Hash h, returning EmptyChunk if it's not
 // present.
 func (ms *MemoryStorage) Get(ctx context.Context, h hash.Hash) (Chunk, error) {

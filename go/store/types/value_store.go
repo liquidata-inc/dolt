@@ -99,10 +99,17 @@ const (
 )
 
 // newTestValueStore creates a simple struct that satisfies ValueReadWriter
-// and is backed by a chunks.TestStore.
+// and is backed by a chunks.TestStore. Used for testing noms.
 func newTestValueStore() *ValueStore {
 	ts := &chunks.TestStorage{}
 	return NewValueStore(ts.NewView())
+}
+
+// NewInternalValueStore creates a simple struct that satisfies ValueReadWriter
+// and is backed by a chunks.TestStore. Used for dolt operations outside of noms.
+func NewInternalValueStore() *ValueStore {
+	ts := &chunks.TestStorage{}
+	return NewValueStore(ts.NewViewWithDefaultFormat())
 }
 
 // NewValueStore returns a ValueStore instance that owns the provided

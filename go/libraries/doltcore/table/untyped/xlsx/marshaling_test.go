@@ -15,6 +15,7 @@
 package xlsx
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -30,7 +31,6 @@ import (
 )
 
 func TestDecodeXLSXRows(t *testing.T) {
-
 	colNames := []string{"id", "first", "last", "age"}
 	_, sch := untyped.NewUntypedSchema(colNames...)
 
@@ -38,7 +38,8 @@ func TestDecodeXLSXRows(t *testing.T) {
 	first := [][]string{{"id", "first", "last", "age"}, {"1", "osheiza", "otori", "24"}}
 	second = append(second, first)
 
-	decoded, err := decodeXLSXRows(types.Format_7_18, second, sch)
+	vrw := types.NewInternalValueStore()
+	decoded, err := decodeXLSXRows(context.Background(), vrw, second, sch)
 	if err != nil {
 		fmt.Println(err)
 
@@ -46,15 +47,15 @@ func TestDecodeXLSXRows(t *testing.T) {
 
 	taggedVals := make(row.TaggedValues, sch.GetAllCols().Size())
 	str := "1"
-	taggedVals[uint64(0)], _ = typeinfo.StringDefaultType.ParseValue(&str)
+	taggedVals[uint64(0)], _ = typeinfo.StringDefaultType.ParseValue(context.Background(), nil, &str)
 	str = "osheiza"
-	taggedVals[uint64(1)], _ = typeinfo.StringDefaultType.ParseValue(&str)
+	taggedVals[uint64(1)], _ = typeinfo.StringDefaultType.ParseValue(context.Background(), nil, &str)
 	str = "otori"
-	taggedVals[uint64(2)], _ = typeinfo.StringDefaultType.ParseValue(&str)
+	taggedVals[uint64(2)], _ = typeinfo.StringDefaultType.ParseValue(context.Background(), nil, &str)
 	str = "24"
-	taggedVals[uint64(3)], _ = typeinfo.StringDefaultType.ParseValue(&str)
+	taggedVals[uint64(3)], _ = typeinfo.StringDefaultType.ParseValue(context.Background(), nil, &str)
 
-	newRow, err := row.New(types.Format_7_18, sch, taggedVals)
+	newRow, err := row.New(vrw.Format(), sch, taggedVals)
 
 	assert.NoError(t, err)
 

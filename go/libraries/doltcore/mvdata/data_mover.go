@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/dolthub/dolt/go/libraries/doltcore/sqle/sqlutil"
-
 	"github.com/dolthub/dolt/go/cmd/dolt/errhand"
 	"github.com/dolthub/dolt/go/libraries/doltcore/doltdb"
 	"github.com/dolthub/dolt/go/libraries/doltcore/env"
@@ -29,10 +27,12 @@ import (
 	"github.com/dolthub/dolt/go/libraries/doltcore/row"
 	"github.com/dolthub/dolt/go/libraries/doltcore/rowconv"
 	"github.com/dolthub/dolt/go/libraries/doltcore/schema"
+	"github.com/dolthub/dolt/go/libraries/doltcore/sqle/sqlutil"
 	"github.com/dolthub/dolt/go/libraries/doltcore/table"
 	"github.com/dolthub/dolt/go/libraries/doltcore/table/pipeline"
 	"github.com/dolthub/dolt/go/libraries/utils/filesys"
 	"github.com/dolthub/dolt/go/libraries/utils/set"
+	"github.com/dolthub/dolt/go/store/types"
 )
 
 type CsvOptions struct {
@@ -207,14 +207,14 @@ func MoveData(ctx context.Context, dEnv *env.DoltEnv, mover *DataMover, mvOpts D
 }
 
 // NameMapTransform creates a pipeline transform that converts rows from inSch to outSch based on a name mapping.
-func NameMapTransform(inSch schema.Schema, outSch schema.Schema, mapper rowconv.NameMapper) (*pipeline.TransformCollection, error) {
+func NameMapTransform(ctx context.Context, vrw types.ValueReadWriter, inSch schema.Schema, outSch schema.Schema, mapper rowconv.NameMapper) (*pipeline.TransformCollection, error) {
 	mapping, err := rowconv.NameMapping(inSch, outSch, mapper)
 
 	if err != nil {
 		return nil, err
 	}
 
-	rconv, err := rowconv.NewImportRowConverter(mapping)
+	rconv, err := rowconv.NewImportRowConverter(ctx, vrw, mapping)
 
 	if err != nil {
 		return nil, err

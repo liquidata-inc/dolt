@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -71,7 +72,7 @@ func (ti *datetimeType) ConvertNomsValueToValue(v types.Value) (interface{}, err
 }
 
 // ConvertValueToNomsValue implements TypeInfo interface.
-func (ti *datetimeType) ConvertValueToNomsValue(v interface{}) (types.Value, error) {
+func (ti *datetimeType) ConvertValueToNomsValue(ctx context.Context, vrw types.ValueReadWriter, v interface{}) (types.Value, error) {
 	//TODO: handle the zero value as a special case that is valid for all ranges
 	if v == nil {
 		return types.NullValue, nil
@@ -162,7 +163,7 @@ func (ti *datetimeType) NomsKind() types.NomsKind {
 }
 
 // ParseValue implements TypeInfo interface.
-func (ti *datetimeType) ParseValue(str *string) (types.Value, error) {
+func (ti *datetimeType) ParseValue(ctx context.Context, vrw types.ValueReadWriter, str *string) (types.Value, error) {
 	if str == nil || *str == "" {
 		return types.NullValue, nil
 	}

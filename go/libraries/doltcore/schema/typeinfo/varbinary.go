@@ -15,6 +15,7 @@
 package typeinfo
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -25,11 +26,7 @@ import (
 )
 
 const (
-	varBinaryTypeParam_Length        = "length"
-	varBinaryTypeParam_SQL           = "sql"
-	varBinaryTypeParam_SQL_Binary    = "bin"
-	varBinaryTypeParam_SQL_VarBinary = "varbin"
-	varBinaryTypeParam_SQL_Blob      = "blob"
+	varBinaryTypeParam_Length = "length"
 )
 
 // As a type, this is modeled more after MySQL's story for binary data. There, it's treated
@@ -53,31 +50,21 @@ func CreateVarBinaryTypeFromParams(params map[string]string) (TypeInfo, error) {
 	} else {
 		return nil, fmt.Errorf(`create varbinary type info is missing param "%v"`, varBinaryTypeParam_Length)
 	}
-	if sqlStr, ok := params[varBinaryTypeParam_SQL]; ok {
-		var sqlType sql.StringType
-		switch sqlStr {
-		case varBinaryTypeParam_SQL_Binary:
-			sqlType, err = sql.CreateBinary(sqltypes.Binary, length)
-		case varBinaryTypeParam_SQL_VarBinary:
-			sqlType, err = sql.CreateBinary(sqltypes.VarBinary, length)
-		case varBinaryTypeParam_SQL_Blob:
-			sqlType, err = sql.CreateBinary(sqltypes.Blob, length)
-		default:
-			return nil, fmt.Errorf(`create varbinary type info has "%v" param with value "%v"`, varBinaryTypeParam_SQL, sqlStr)
-		}
-		if err != nil {
-			return nil, err
-		}
-		return &varBinaryType{sqlType}, nil
-	} else {
-		return nil, fmt.Errorf(`create varbinary type info is missing param "%v"`, varBinaryTypeParam_SQL)
+	sqlType, err := sql.CreateBinary(sqltypes.Blob, length)
+	if err != nil {
+		return nil, err
 	}
+	return &varBinaryType{sqlType}, nil
 }
 
 // ConvertNomsValueToValue implements TypeInfo interface.
 func (ti *varBinaryType) ConvertNomsValueToValue(v types.Value) (interface{}, error) {
-	if val, ok := v.(types.String); ok {
-		return string(val), nil
+	if val, ok := v.(types.ChunkedString); ok {
+		valStr, err := val.ReadString(context.Background(), -1)
+		if err != nil {
+			return nil, err
+		}
+		return string(valStr), nil
 	}
 	if _, ok := v.(types.Null); ok || v == nil {
 		return nil, nil
@@ -86,7 +73,7 @@ func (ti *varBinaryType) ConvertNomsValueToValue(v types.Value) (interface{}, er
 }
 
 // ConvertValueToNomsValue implements TypeInfo interface.
-func (ti *varBinaryType) ConvertValueToNomsValue(v interface{}) (types.Value, error) {
+func (ti *varBinaryType) ConvertValueToNomsValue(ctx context.Context, vrw types.ValueReadWriter, v interface{}) (types.Value, error) {
 	if v == nil {
 		return types.NullValue, nil
 	}
@@ -96,7 +83,7 @@ func (ti *varBinaryType) ConvertValueToNomsValue(v interface{}) (types.Value, er
 	}
 	val, ok := strVal.(string)
 	if ok {
-		return types.String(val), nil
+		return types.NewChunkedString(ctx, vrw, val)
 	}
 	return nil, fmt.Errorf(`"%v" cannot convert value "%v" of type "%T" as it is invalid`, ti.String(), v, v)
 }
@@ -107,23 +94,20 @@ func (ti *varBinaryType) Equals(other TypeInfo) bool {
 		return false
 	}
 	if ti2, ok := other.(*varBinaryType); ok {
-		return ti.sqlBinaryType.MaxCharacterLength() == ti2.sqlBinaryType.MaxCharacterLength() &&
-			ti.sqlBinaryType.Type() == ti2.sqlBinaryType.Type()
+		return ti.sqlBinaryType.MaxCharacterLength() == ti2.sqlBinaryType.MaxCharacterLength()
 	}
 	return false
 }
 
 // FormatValue implements TypeInfo interface.
 func (ti *varBinaryType) FormatValue(v types.Value) (*string, error) {
-	if val, ok := v.(types.String); ok {
-		res, err := ti.sqlBinaryType.Convert(string(val))
+	if val, ok := v.(types.ChunkedString); ok {
+		valStr, err := val.ReadString(context.Background(), -1)
 		if err != nil {
 			return nil, err
 		}
-		if resStr, ok := res.(string); ok {
-			return &resStr, nil
-		}
-		return nil, fmt.Errorf(`"%v" has unexpectedly encountered a value of type "%T" from embedded type`, ti.String(), v)
+		resStr := string(valStr)
+		return &resStr, nil
 	}
 	if _, ok := v.(types.Null); ok || v == nil {
 		return nil, nil
@@ -138,30 +122,17 @@ func (ti *varBinaryType) GetTypeIdentifier() Identifier {
 
 // GetTypeParams implements TypeInfo interface.
 func (ti *varBinaryType) GetTypeParams() map[string]string {
-	typeParams := map[string]string{
+	return map[string]string{
 		varBinaryTypeParam_Length: strconv.FormatInt(ti.sqlBinaryType.MaxCharacterLength(), 10),
 	}
-	switch ti.sqlBinaryType.Type() {
-	case sqltypes.Binary:
-		typeParams[varBinaryTypeParam_SQL] = varBinaryTypeParam_SQL_Binary
-	case sqltypes.VarBinary:
-		typeParams[varBinaryTypeParam_SQL] = varBinaryTypeParam_SQL_VarBinary
-	case sqltypes.Blob:
-		typeParams[varBinaryTypeParam_SQL] = varBinaryTypeParam_SQL_Blob
-	default:
-		panic(fmt.Errorf(`unknown varbinary type info sql type "%v"`, ti.sqlBinaryType.Type().String()))
-	}
-	return typeParams
 }
 
 // IsValid implements TypeInfo interface.
 func (ti *varBinaryType) IsValid(v types.Value) bool {
-	if val, ok := v.(types.String); ok {
-		_, err := ti.sqlBinaryType.Convert(string(val))
-		if err != nil {
-			return false
+	if val, ok := v.(types.ChunkedString); ok {
+		if int64(val.StringLen()) <= ti.sqlBinaryType.MaxByteLength() {
+			return true
 		}
-		return true
 	}
 	if _, ok := v.(types.Null); ok || v == nil {
 		return true
@@ -171,11 +142,11 @@ func (ti *varBinaryType) IsValid(v types.Value) bool {
 
 // NomsKind implements TypeInfo interface.
 func (ti *varBinaryType) NomsKind() types.NomsKind {
-	return types.StringKind
+	return types.ChunkedStringKind
 }
 
 // ParseValue implements TypeInfo interface.
-func (ti *varBinaryType) ParseValue(str *string) (types.Value, error) {
+func (ti *varBinaryType) ParseValue(ctx context.Context, vrw types.ValueReadWriter, str *string) (types.Value, error) {
 	if str == nil {
 		return types.NullValue, nil
 	}
@@ -184,7 +155,7 @@ func (ti *varBinaryType) ParseValue(str *string) (types.Value, error) {
 		return nil, err
 	}
 	if val, ok := strVal.(string); ok {
-		return types.String(val), nil
+		return types.NewChunkedString(ctx, vrw, val)
 	}
 	return nil, fmt.Errorf(`"%v" cannot convert the string "%v" to a value`, ti.String(), str)
 }
@@ -196,18 +167,7 @@ func (ti *varBinaryType) Promote() TypeInfo {
 
 // String implements TypeInfo interface.
 func (ti *varBinaryType) String() string {
-	sqlType := ""
-	switch ti.sqlBinaryType.Type() {
-	case sqltypes.Binary:
-		sqlType = "Binary"
-	case sqltypes.VarBinary:
-		sqlType = "VarBinary"
-	case sqltypes.Blob:
-		sqlType = "Blob"
-	default:
-		panic(fmt.Errorf(`unknown varbinary type info sql type "%v"`, ti.sqlBinaryType.Type().String()))
-	}
-	return fmt.Sprintf(`VarBinary(%v, SQL: %v)`, ti.sqlBinaryType.MaxCharacterLength(), sqlType)
+	return fmt.Sprintf(`VarBinary(%v)`, ti.sqlBinaryType.MaxCharacterLength())
 }
 
 // ToSqlType implements TypeInfo interface.

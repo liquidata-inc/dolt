@@ -38,7 +38,7 @@ type ValueStats interface {
 
 func WriteValueStats(ctx context.Context, w io.Writer, v Value, vr ValueReader) error {
 	switch v.Kind() {
-	case BoolKind, FloatKind, StringKind, RefKind, StructKind, TypeKind, TupleKind:
+	case BoolKind, FloatKind, StringKind, RefKind, StructKind, TypeKind, TupleKind, ChunkedStringKind:
 		return writeUnchunkedValueStats(w, v, vr)
 	case BlobKind, ListKind, MapKind, SetKind:
 		return writePtreeStats(ctx, w, v, vr)

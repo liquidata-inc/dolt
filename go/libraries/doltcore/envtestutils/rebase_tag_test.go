@@ -554,7 +554,7 @@ func checkRows(t *testing.T, dEnv *env.DoltEnv, root *doltdb.RootValue, tableNam
 			break
 		}
 		require.NoError(t, err)
-		rr, err := sqlutil.SqlRowToDoltRow(root.VRW().Format(), r, sch)
+		rr, err := sqlutil.SqlRowToDoltRow(context.Background(), root.VRW(), r, sch)
 		require.NoError(t, err)
 		actualRows = append(actualRows, rr)
 	}

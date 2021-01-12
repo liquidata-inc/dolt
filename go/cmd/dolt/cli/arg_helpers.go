@@ -122,7 +122,7 @@ func parseTuples(args []string, pkCols *schema.ColCollection) ([]map[uint64]stri
 	return results, nil
 }
 
-func ParseKeyValues(nbf *types.NomsBinFormat, sch schema.Schema, args []string) ([]types.Value, error) {
+func ParseKeyValues(ctx context.Context, vrw types.ValueReadWriter, sch schema.Schema, args []string) ([]types.Value, error) {
 	pkCols := sch.GetPKCols()
 
 	var pkMaps []map[uint64]string
@@ -147,10 +147,10 @@ func ParseKeyValues(nbf *types.NomsBinFormat, sch schema.Schema, args []string) 
 		}
 	}
 
-	convFuncs := make(map[uint64]func(*string) (types.Value, error))
+	convFuncs := make(map[uint64]func(context.Context, types.ValueReadWriter, *string) (types.Value, error))
 	err := sch.GetPKCols().Iter(func(tag uint64, col schema.Column) (stop bool, err error) {
 		if typeinfo.IsStringType(col.TypeInfo) {
-			convFuncs[tag] = func(v *string) (types.Value, error) {
+			convFuncs[tag] = func(_ context.Context, _ types.ValueReadWriter, v *string) (types.Value, error) {
 				return types.String(*v), nil
 			}
 		} else {
@@ -167,7 +167,7 @@ func ParseKeyValues(nbf *types.NomsBinFormat, sch schema.Schema, args []string) 
 	for _, pkMap := range pkMaps {
 		taggedVals := make(row.TaggedValues)
 		for k, v := range pkMap {
-			val, err := convFuncs[k](&v)
+			val, err := convFuncs[k](ctx, vrw, &v)
 
 			if err != nil {
 				return nil, err
@@ -176,7 +176,7 @@ func ParseKeyValues(nbf *types.NomsBinFormat, sch schema.Schema, args []string) 
 			taggedVals[k] = val
 		}
 
-		tpl, err := taggedVals.NomsTupleForPKCols(nbf, pkCols).Value(context.TODO())
+		tpl, err := taggedVals.NomsTupleForPKCols(vrw.Format(), pkCols).Value(ctx)
 
 		if err != nil {
 			return nil, err

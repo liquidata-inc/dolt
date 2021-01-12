@@ -25,10 +25,11 @@ import (
 	"github.com/dolthub/dolt/go/libraries/doltcore/doltdb"
 	"github.com/dolthub/dolt/go/libraries/doltcore/row"
 	"github.com/dolthub/dolt/go/libraries/doltcore/schema"
+	"github.com/dolthub/dolt/go/store/types"
 )
 
 // ApplyDefaults applies the default values to the given indices, returning the resulting row.
-func ApplyDefaults(ctx context.Context, doltSchema schema.Schema, sqlSchema sql.Schema, indicesOfColumns []int, dRow row.Row) (row.Row, error) {
+func ApplyDefaults(ctx context.Context, vrw types.ValueReadWriter, doltSchema schema.Schema, sqlSchema sql.Schema, indicesOfColumns []int, dRow row.Row) (row.Row, error) {
 	if len(indicesOfColumns) == 0 {
 		return dRow, nil
 	}
@@ -59,7 +60,7 @@ func ApplyDefaults(ctx context.Context, doltSchema schema.Schema, sqlSchema sql.
 		if newSqlRow[i] == nil {
 			continue
 		}
-		val, err := doltCols.TagToCol[tag].TypeInfo.ConvertValueToNomsValue(newSqlRow[i])
+		val, err := doltCols.TagToCol[tag].TypeInfo.ConvertValueToNomsValue(ctx, vrw, newSqlRow[i])
 		if err != nil {
 			return nil, err
 		}

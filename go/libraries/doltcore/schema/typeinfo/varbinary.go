@@ -15,8 +15,11 @@
 package typeinfo
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -59,12 +62,12 @@ func CreateVarBinaryTypeFromParams(params map[string]string) (TypeInfo, error) {
 
 // ConvertNomsValueToValue implements TypeInfo interface.
 func (ti *varBinaryType) ConvertNomsValueToValue(v types.Value) (interface{}, error) {
-	if val, ok := v.(types.ChunkedString); ok {
-		valStr, err := val.ReadString(context.Background(), -1)
+	if val, ok := v.(types.Blob); ok {
+		s, err := ti.fromBlob(val)
 		if err != nil {
 			return nil, err
 		}
-		return string(valStr), nil
+		return string(s), nil
 	}
 	if _, ok := v.(types.Null); ok || v == nil {
 		return nil, nil
@@ -83,7 +86,7 @@ func (ti *varBinaryType) ConvertValueToNomsValue(ctx context.Context, vrw types.
 	}
 	val, ok := strVal.(string)
 	if ok {
-		return types.NewChunkedString(ctx, vrw, val)
+		return ti.toBlob(ctx, vrw, val)
 	}
 	return nil, fmt.Errorf(`"%v" cannot convert value "%v" of type "%T" as it is invalid`, ti.String(), v, v)
 }
@@ -101,8 +104,8 @@ func (ti *varBinaryType) Equals(other TypeInfo) bool {
 
 // FormatValue implements TypeInfo interface.
 func (ti *varBinaryType) FormatValue(v types.Value) (*string, error) {
-	if val, ok := v.(types.ChunkedString); ok {
-		valStr, err := val.ReadString(context.Background(), -1)
+	if val, ok := v.(types.Blob); ok {
+		valStr, err := ti.fromBlob(val)
 		if err != nil {
 			return nil, err
 		}
@@ -129,10 +132,13 @@ func (ti *varBinaryType) GetTypeParams() map[string]string {
 
 // IsValid implements TypeInfo interface.
 func (ti *varBinaryType) IsValid(v types.Value) bool {
-	if val, ok := v.(types.ChunkedString); ok {
-		if int64(val.StringLen()) <= ti.sqlBinaryType.MaxByteLength() {
-			return true
-		}
+	if _, ok := v.(types.Blob); ok {
+		// This is only for this test branch
+		return true
+	}
+	if _, ok := v.(types.Ref); ok {
+		// This is only for this test branch
+		return true
 	}
 	if _, ok := v.(types.Null); ok || v == nil {
 		return true
@@ -142,7 +148,8 @@ func (ti *varBinaryType) IsValid(v types.Value) bool {
 
 // NomsKind implements TypeInfo interface.
 func (ti *varBinaryType) NomsKind() types.NomsKind {
-	return types.ChunkedStringKind
+	return types.BlobKind
+	//return types.RefKind
 }
 
 // ParseValue implements TypeInfo interface.
@@ -155,7 +162,7 @@ func (ti *varBinaryType) ParseValue(ctx context.Context, vrw types.ValueReadWrit
 		return nil, err
 	}
 	if val, ok := strVal.(string); ok {
-		return types.NewChunkedString(ctx, vrw, val)
+		return ti.toBlob(ctx, vrw, val)
 	}
 	return nil, fmt.Errorf(`"%v" cannot convert the string "%v" to a value`, ti.String(), str)
 }
@@ -173,4 +180,57 @@ func (ti *varBinaryType) String() string {
 // ToSqlType implements TypeInfo interface.
 func (ti *varBinaryType) ToSqlType() sql.Type {
 	return ti.sqlBinaryType
+}
+
+func (ti *varBinaryType) fromBlob(b types.Blob) (types.String, error) {
+	countBytes := make([]byte, 8)
+	n, err := b.ReadAt(context.Background(), countBytes, 0)
+	if err == io.EOF {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if n != 8 {
+		return "", fmt.Errorf("wanted 8 bytes from blob for count, got %d", n)
+	}
+	count := binary.LittleEndian.Uint64(countBytes)
+	str := make([]byte, count)
+	n, err = b.ReadAt(context.Background(), str, 8)
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+	if uint64(n) != count {
+		return "", fmt.Errorf("wanted %d bytes from blob for data, got %d", count, n)
+	}
+	return types.String(str), nil
+}
+
+func (ti *varBinaryType) toBlob(ctx context.Context, vrw types.ValueReadWriter, s string) (types.Blob, error) {
+	data := make([]byte, 8+len(s))
+	binary.LittleEndian.PutUint64(data[:8], uint64(len(s)))
+	copy(data[8:], s)
+	return types.NewBlob(ctx, vrw, bytes.NewReader(data))
+}
+
+func (ti *varBinaryType) toRef(ctx context.Context, vrw types.ValueReadWriter, s string) (types.Ref, error) {
+	val, err := ti.toBlob(ctx, vrw, s)
+	if err != nil {
+		return types.Ref{}, err
+	}
+	valRef, err := types.NewRef(val, vrw.Format())
+	if err != nil {
+		return types.Ref{}, err
+	}
+	targetVal, err := valRef.TargetValue(ctx, vrw)
+	if err != nil {
+		return types.Ref{}, err
+	}
+	if targetVal == nil {
+		_, err = vrw.WriteValue(ctx, val)
+		if err != nil {
+			return types.Ref{}, err
+		}
+	}
+	return valRef, err
 }

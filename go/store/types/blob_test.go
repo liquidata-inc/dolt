@@ -36,9 +36,8 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func randomBuff(powOfTwo uint) []byte {
-	length := 1 << powOfTwo
-	rr := rand.New(rand.NewSource(int64(powOfTwo)))
+func randomBuff(length uint) []byte {
+	rr := rand.New(rand.NewSource(int64(length)))
 	buff := make([]byte, length)
 	rr.Read(buff)
 	return buff

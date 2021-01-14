@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/abiosoft/readline"
 	sqle "github.com/dolthub/go-mysql-server"
@@ -54,6 +55,10 @@ import (
 	"github.com/dolthub/dolt/go/libraries/utils/osutil"
 	"github.com/dolthub/dolt/go/libraries/utils/pipeline"
 	"github.com/dolthub/dolt/go/libraries/utils/tracing"
+	"github.com/dolthub/dolt/go/store/types"
+	"github.com/dolthub/dolt/go/store/nbs"
+	"github.com/dolthub/dolt/go/store/hash"
+	"github.com/dolthub/dolt/go/store/chunks"
 )
 
 var sqlDocs = cli.CommandDocumentationContent{
@@ -238,6 +243,64 @@ func (cmd SqlCmd) Exec(ctx context.Context, commandStr string, args []string, dE
 	var root *doltdb.RootValue
 	for name, root = range initialRoots {
 		roots[name] = root
+	}
+
+	t, _, err := root.GetTable(ctx, "vote_tallies")
+	if err != nil {
+		panic(err)
+	}
+	if t == nil {
+		panic("expected vote_tallies table")
+	}
+	rd, err := t.GetRowData(ctx)
+	if err != nil {
+		panic(err)
+	}
+	nbs.DebugGetLocations = false
+	hashes := types.DebugVisitMap(rd)
+	nbs.DebugGetLocations = false
+	for _, h := range hashes {
+		fmt.Fprintf(color.Error, "%s\n", h)
+	}
+	os.Exit(1)
+
+	if false {
+	type CSer interface {
+		ChunkStore() chunks.ChunkStore
+	}
+	cs := root.VRW().(CSer).ChunkStore()
+
+	hashset := hash.HashSet{}
+	for _, h := range hashes {
+		hashset.Insert(hash.Parse(h))
+	}
+
+	byHash := make(map[string]nbs.CompressedChunk)
+	mu := new(sync.Mutex)
+	cs.(*nbs.NBSMetricWrapper).GetManyCompressed(ctx, hashset, func(cc nbs.CompressedChunk) {
+		mu.Lock()
+		byHash[cc.Hash().String()] = cc
+		mu.Unlock()
+	})
+	writer, err := nbs.NewCmpChunkTableWriter("")
+	if err != nil {
+		panic(err)
+	}
+	for _, h := range hashes {
+		err = writer.AddCmpChunk(byHash[h])
+		if err != nil {
+			panic(err)
+		}
+	}
+	filename, err := writer.Finish()
+	if err != nil {
+		panic(err)
+	}
+        err = writer.FlushToFile(filename)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Fprintf(color.Error, "ChunkCount(): %d\n", writer.ChunkCount())
 	}
 
 	var currentDB string

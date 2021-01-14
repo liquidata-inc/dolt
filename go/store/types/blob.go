@@ -370,7 +370,7 @@ func readBlob(ctx context.Context, r io.Reader, vrw ValueReadWriter) (Blob, erro
 		}
 		chunkBytes[offset] = b
 		offset++
-		rv.HashByte(b)
+		rv.hashByte(b, uint32(offset))
 		return rv.crossedBoundary
 	}
 

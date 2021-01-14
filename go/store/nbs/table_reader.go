@@ -30,7 +30,9 @@ import (
 	"os"
 	"sort"
 	"sync/atomic"
+	"fmt"
 
+	"github.com/fatih/color"
 	"github.com/dolthub/mmap-go"
 	"github.com/golang/snappy"
 	"golang.org/x/sync/errgroup"
@@ -623,6 +625,8 @@ func (tr tableReader) has(h addr) (bool, error) {
 	return ok, nil
 }
 
+var DebugGetLocations bool = false
+
 // returns the storage associated with |h|, iff present. Returns nil if absent. On success,
 // the returned byte slice directly references the underlying storage.
 func (tr tableReader) get(ctx context.Context, h addr, stats *Stats) ([]byte, error) {
@@ -634,6 +638,10 @@ func (tr tableReader) get(ctx context.Context, h addr, stats *Stats) ([]byte, er
 	offset := e.Offset()
 	length := uint64(e.Length())
 	buff := make([]byte, length) // TODO: Avoid this allocation for every get
+
+	if DebugGetLocations {
+		fmt.Fprintf(color.Error, "get %v at offset %d, length %d\n", h, offset, length)
+	}
 
 	n, err := tr.r.ReadAtWithStats(ctx, buff, int64(offset), stats)
 

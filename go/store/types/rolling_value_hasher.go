@@ -100,10 +100,14 @@ func newRollingValueHasher(nbf *NomsBinFormat, salt byte) *rollingValueHasher {
 }
 
 func (rv *rollingValueHasher) HashByte(b byte) bool {
+	return rv.hashByte(b, rv.bw.offset)
+}
+
+func (rv *rollingValueHasher) hashByte(b byte, offset uint32) bool {
 	if !rv.crossedBoundary {
 		rv.bz.HashByte(b ^ rv.salt)
 		rv.crossedBoundary = (rv.bz.Sum32()&rv.pattern == rv.pattern)
-		if rv.bw.offset > maxChunkSize {
+		if offset > maxChunkSize {
 			rv.crossedBoundary = true
 		}
 	}

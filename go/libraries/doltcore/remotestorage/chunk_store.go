@@ -254,7 +254,7 @@ func (gr *GetRange) SplitAtGaps(maxGapBytes uint64) []*GetRange {
 	for i < len(gr.Ranges) {
 		j := i + 1
 		for j < len(gr.Ranges) {
-			if gr.GapBetween(i, j) > maxGapBytes {
+			if gr.GapBetween(j-1, j) > maxGapBytes {
 				break
 			}
 			j++
@@ -744,7 +744,7 @@ func (dcs *DoltChunkStore) httpPostUpload(ctx context.Context, hashBytes []byte,
 // of larger downloads.  It does this by sorting the ranges of bytes that are needed, and then comparing how close together
 // neighboring ranges are.  If they are within the threshold the two ranges will be aggregated into a single request for
 // the entire range of data.
-func aggregateDownloads(aggDistance uint64, resourceGets map[string]*GetRange) []*GetRange {
+func AggregateDownloads(aggDistance uint64, resourceGets map[string]*GetRange) []*GetRange {
 	var res []*GetRange
 	for _, resourceGet := range resourceGets {
 		res = append(res, resourceGet.SplitAtGaps(aggDistance)...)
@@ -760,7 +760,7 @@ const (
 // creates work functions for each download and executes them in parallel.  The work functions write downloaded chunks
 // to chunkChan
 func (dcs *DoltChunkStore) downloadChunks(ctx context.Context, resourceGets map[string]*GetRange, chunkChan chan nbs.CompressedChunk) error {
-	gets := aggregateDownloads(chunkAggDistance, resourceGets)
+	gets := AggregateDownloads(chunkAggDistance, resourceGets)
 
 	// loop over all the gets that need to be downloaded and create a work function for each
 	work := make([]func() error, len(gets))

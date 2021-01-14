@@ -210,7 +210,8 @@ func (ti *varBinaryType) toBlob(ctx context.Context, vrw types.ValueReadWriter, 
 	data := make([]byte, 8+len(s))
 	binary.LittleEndian.PutUint64(data[:8], uint64(len(s)))
 	copy(data[8:], s)
-	return types.NewBlob(ctx, vrw, bytes.NewReader(data))
+	b, e := types.NewBlob(ctx, vrw, bytes.NewReader(data))
+	return b, e
 }
 
 func (ti *varBinaryType) toRef(ctx context.Context, vrw types.ValueReadWriter, s string) (types.Ref, error) {

@@ -792,6 +792,51 @@ SQL
     rm -rf doltsql
 }
 
+@test "sql: batch delimiter" {
+    dolt sql <<SQL
+DELIMITER // ;
+CREATE TABLE test (
+  pk BIGINT PRIMARY KEY,
+  v1 BIGINT,
+  v2 BIGINT
+)//
+INSERT INTO test VALUES (1, 1, 1) //
+DELIMITER $ //
+INSERT INTO test VALUES (2, 2, 2)$ $
+CREATE PROCEDURE p1(x BIGINT)
+BEGIN
+  IF x < 10 THEN
+    SET x = 10;
+  END IF;
+  SELECT pk+x, v1+x, v2+x FROM test ORDER BY 1;
+END$
+DELIMITER ;   $
+INSERT INTO test VALUES (3, 3, 3);
+DELIMITER ********** ;
+INSERT INTO test VALUES (4, 4, 4)**********
+INSERT INTO test VALUES (5, 5, 5)
+SQL
+    run dolt sql -q "CALL p1(3)" -r=csv
+    [ "$status" -eq "0" ]
+    [[ "$output" =~ "test.pk + x,test.v1 + x,test.v2 + x" ]] || false
+    [[ "$output" =~ "11,11,11" ]] || false
+    [[ "$output" =~ "12,12,12" ]] || false
+    [[ "$output" =~ "13,13,13" ]] || false
+    [[ "$output" =~ "14,14,14" ]] || false
+    [[ "$output" =~ "15,15,15" ]] || false
+    [[ "${#lines[@]}" = "6" ]] || false
+
+    run dolt sql -q "CALL p1(20)" -r=csv
+    [ "$status" -eq "0" ]
+    [[ "$output" =~ "test.pk + x,test.v1 + x,test.v2 + x" ]] || false
+    [[ "$output" =~ "21,21,21" ]] || false
+    [[ "$output" =~ "22,22,22" ]] || false
+    [[ "$output" =~ "23,23,23" ]] || false
+    [[ "$output" =~ "24,24,24" ]] || false
+    [[ "$output" =~ "25,25,25" ]] || false
+    [[ "${#lines[@]}" = "6" ]] || false
+}
+
 @test "sql: insert on duplicate key inserts data by column" {
     run dolt sql -q "CREATE TABLE test (col_a varchar(2) not null, col_b varchar(2), col_c varchar(2), primary key(col_a));"
     [ $status -eq 0 ]

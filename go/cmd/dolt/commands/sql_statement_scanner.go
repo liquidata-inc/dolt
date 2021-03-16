@@ -25,6 +25,7 @@ type statementScanner struct {
 	statementStartLine int // the line number of the first line of the last parsed statement
 	startLineNum       int // the line number we began parsing the most recent token at
 	lineNum            int // the current line number being parsed
+	Delimiter          string
 }
 
 const maxStatementBufferBytes = 100 * 1024 * 1024
@@ -36,8 +37,9 @@ func NewSqlStatementScanner(input io.Reader) *statementScanner {
 	scanner.Buffer(buf, maxStatementBufferBytes)
 
 	s := &statementScanner{
-		Scanner: scanner,
-		lineNum: 1,
+		Scanner:   scanner,
+		lineNum:   1,
+		Delimiter: ";",
 	}
 	scanner.Split(s.scanStatements)
 
@@ -58,16 +60,17 @@ func (s *statementScanner) scanStatements(data []byte, atEOF bool) (advance int,
 	}
 
 	var (
-		quoteChar                 byte // the opening quote character of the current quote being parsed, or 0 if the current parse location isn't inside a quoted string
-		lastChar                  byte // the last character parsed
-		ignoreNextChar            bool // whether to ignore the next character
-		numConsecutiveBackslashes int  // the number of consecutive backslashes encountered
-		seenNonWhitespaceChar     bool // whether we have encountered a non-whitespace character since we returned the last token
+		quoteChar                      byte // the opening quote character of the current quote being parsed, or 0 if the current parse location isn't inside a quoted string
+		lastChar                       byte // the last character parsed
+		ignoreNextChar                 bool // whether to ignore the next character
+		numConsecutiveBackslashes      int  // the number of consecutive backslashes encountered
+		seenNonWhitespaceChar          bool // whether we have encountered a non-whitespace character since we returned the last token
+		numConsecutiveDelimiterMatches int  // the consecutive number of characters that have been matched to the delimiter
 	)
 
 	s.startLineNum = s.lineNum
 
-	for i := range data {
+	for i := 0; i < len(data); i++ {
 		if !ignoreNextChar {
 			// this doesn't handle unicode characters correctly and will break on some things, but it's only used for line
 			// number reporting.
@@ -75,16 +78,24 @@ func (s *statementScanner) scanStatements(data []byte, atEOF bool) (advance int,
 				seenNonWhitespaceChar = true
 				s.statementStartLine = s.lineNum
 			}
+			// check if we've matched the delimiter string
+			if quoteChar == 0 && data[i] == s.Delimiter[numConsecutiveDelimiterMatches] {
+				numConsecutiveDelimiterMatches++
+				if numConsecutiveDelimiterMatches == len(s.Delimiter) {
+					s.startLineNum = s.lineNum
+					_, _, _ = s.resetState()
+					removalLength := len(s.Delimiter) - 1 // We remove the delimiter so it depends on the length
+					return i + 1, data[0 : i-removalLength], nil
+				}
+				lastChar = data[i]
+				continue
+			} else {
+				numConsecutiveDelimiterMatches = 0
+			}
 
 			switch data[i] {
 			case '\n':
 				s.lineNum++
-			case ';':
-				if quoteChar == 0 {
-					s.startLineNum = s.lineNum
-					_, _, _ = s.resetState()
-					return i + 1, data[0:i], nil
-				}
 			case backslash:
 				numConsecutiveBackslashes++
 			case sQuote, dQuote, backtick:

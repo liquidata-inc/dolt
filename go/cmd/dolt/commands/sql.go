@@ -94,6 +94,8 @@ const (
 # "exit" or "quit" (or Ctrl-D) to exit.`
 )
 
+var delimiterRegex = regexp.MustCompile(`(?i)^\s*DELIMITER\s+(\S+)\s*(\s+\S+\s*)?$`)
+
 type SqlCmd struct {
 	VersionStr string
 }
@@ -557,12 +559,20 @@ func runBatchMode(ctx *sql.Context, se *sqlEngine, input io.Reader) error {
 		if len(query) == 0 || query == "\n" {
 			continue
 		}
-		if err := processBatchQuery(ctx, query, se); err != nil {
-			// TODO: this line number will not be accurate for errors that occur when flushing a batch of inserts (as opposed
-			//  to processing the query)
-			verr := formatQueryError(fmt.Sprintf("error on line %d for query %s", scanner.statementStartLine, query), err)
-			cli.PrintErrln(verr.Verbose())
-			return err
+		shouldProcessQuery := true
+		if matches := delimiterRegex.FindStringSubmatch(query); len(matches) == 3 {
+			// If we don't match from anything, then we just pass to the SQL engine and let it complain.
+			scanner.Delimiter = matches[1]
+			shouldProcessQuery = false
+		}
+		if shouldProcessQuery {
+			if err := processBatchQuery(ctx, query, se); err != nil {
+				// TODO: this line number will not be accurate for errors that occur when flushing a batch of inserts (as opposed
+				//  to processing the query)
+				verr := formatQueryError(fmt.Sprintf("error on line %d for query %s", scanner.statementStartLine, query), err)
+				cli.PrintErrln(verr.Verbose())
+				return err
+			}
 		}
 		query = ""
 	}
@@ -628,7 +638,6 @@ func runShell(ctx *sql.Context, se *sqlEngine, mrEnv env.MultiRepoEnv, initialRo
 		}
 	})
 
-	delimiterRegex := regexp.MustCompile(`(?i)^DELIMITER\s+(\S+)\s+\S+\s*$`)
 	var returnedVerr errhand.VerboseError = nil // Verr that cannot be just printed but needs to be returned.
 	shell.Uninterpreted(func(c *ishell.Context) {
 		query := c.Args[0]
@@ -649,7 +658,7 @@ func runShell(ctx *sql.Context, se *sqlEngine, mrEnv env.MultiRepoEnv, initialRo
 
 		shouldProcessQuery := true
 		//TODO: Handle comments and enforce the current line terminator
-		if matches := delimiterRegex.FindStringSubmatch(query); len(matches) == 2 {
+		if matches := delimiterRegex.FindStringSubmatch(query); len(matches) == 3 {
 			// If we don't match from anything, then we just pass to the SQL engine and let it complain.
 			shell.SetLineTerminator(matches[1])
 			shouldProcessQuery = false

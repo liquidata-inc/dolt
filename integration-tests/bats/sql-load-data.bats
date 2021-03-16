@@ -10,7 +10,7 @@ teardown() {
     teardown_common
 }
 
-@test "simple load data from file into table" {
+@test "sql-load-data: simple load from file into table" {
     cat <<DELIM > 1pk5col-ints.csv
 pk||c1||c2||c3||c4||c5
 0||1||2||3||4||5
@@ -33,7 +33,7 @@ SQL
     [ "${lines[2]}" = "1,1,2,3,4,5" ]
 }
 
-@test "load data into unknown table throws error" {
+@test "sql-load-data: load into unknown table throws error" {
     run dolt sql << SQL
 SET secure_file_priv='./';
 LOAD DATA INFILE '1pk5col-ints.csv' INTO TABLE test CHARACTER SET UTF8MB4 FIELDS TERMINATED BY '||' ESCAPED BY '' LINES TERMINATED BY '\n' IGNORE 1 LINES;
@@ -43,7 +43,7 @@ SQL
     [[ "$output" =~  "table not found: test" ]] || false
 }
 
-@test "load data with unknown file throws error" {
+@test "sql-load-data: load with unknown file throws error" {
     skip "Different error msg on windows."
     run dolt sql << SQL
 SET secure_file_priv='./';
@@ -55,7 +55,7 @@ SQL
     [[ "$output" =~  "no such file or directory" ]] || false
 }
 
-@test "load data works with enclosed terms" {
+@test "sql-load-data: works with enclosed terms" {
     cat <<DELIM > 1pk5col-ints.csv
 pk||c1||c2||c3||c4||c5
 "0"||"1"||"2"||"3"||"4"||"5"
@@ -78,7 +78,7 @@ SQL
     [ "${lines[2]}" = "1,1,2,3,4,5" ]
 }
 
-@test "load data works with prefixed terms" {
+@test "sql-load-data: works with prefixed terms" {
     cat <<DELIM > prefixed.txt
 pk
 sssHi
@@ -104,7 +104,7 @@ SQL
     [ "${lines[3]}" = "Yo" ]
 }
 
-@test "load data works when the number of input columns in the file is less than the number of schema columns" {
+@test "sql-load-data: works when the number of input columns in the file is less than the number of schema columns" {
     cat <<DELIM > 1pk2col-ints.csv
 pk,c1
 0,1
@@ -127,7 +127,7 @@ SQL
     [ "${lines[2]}" = "1,1," ]
 }
 
-@test "load data works with fields separated by tabs" {
+@test "sql-load-data: works with fields separated by tabs" {
     skip "This needs to be fixed."
     cat <<DELIM > 1pk2col-ints.csv
 pk  c1
@@ -151,7 +151,7 @@ SQL
     [ "${lines[2]}" = "1,1" ]
 }
 
-@test "load data recognizes certain nulls" {
+@test "sql-load-data: recognizes certain nulls" {
     cat <<DELIM > 1pk2col-ints.csv
 pk
 \N
@@ -171,7 +171,7 @@ SQL
     [[ "$output" =~  "2" ]] || false
 }
 
-@test "load data works when column order is mismatched" {
+@test "sql-load-data: works when column order is mismatched" {
     skip "This needs to be fixed."
 
     cat <<DELIM > 1pk2col-ints.csv
@@ -196,7 +196,7 @@ SQL
     [ "${lines[2]}" = "2,hello" ]
 }
 
-@test "load data with different column types that uses optionally" {
+@test "sql-load-data: with different column types that uses optionally" {
     skip "This functionality is not present yet."
     cat <<DELIM > complex.csv
 1,"a string",100.20
@@ -223,7 +223,7 @@ SQL
     [ "${lines[4]}" = "4,a string containing a \", quote and comma,100.20" ]
 }
 
-@test "load data works with escaped columns" {
+@test "sql-load-data: works with escaped columns" {
     skip "This functionality is not present yet."
     cat <<DELIM > escape.txt
 "hi"
@@ -250,7 +250,7 @@ SQL
     [ "${lines[4]}" = "new\ns" ]
 }
 
-@test "load data when the number of input columns in the file is greater than the number of schema columns" {
+@test "sql-load-data: when the number of input columns in the file is greater than the number of schema columns" {
    skip "This functionality is not present yet."
    cat <<DELIM > 1pk5col-ints.csv
 pk||c1||c2||c3||c4||c5

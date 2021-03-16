@@ -1,4 +1,4 @@
-name: Check Formatting and Commiters
+name: Check Formatting and Committers
 
 on:
   pull_request:
@@ -26,6 +26,7 @@ jobs:
           go run -mod=readonly ./utils/copyrightshdrs/
           ./utils/repofmt/check_fmt.sh
           ./Godeps/verify.sh
+          ./utils/repofmt/check_bats_fmt.sh
         env:
           BRANCH_NAME: ${{ github.head_ref }}
           CHANGE_TARGET: ${{ github.base_ref }}

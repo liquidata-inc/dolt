@@ -9,7 +9,7 @@ teardown() {
     teardown_common
 }
 
-@test "common: stashing, setting, and restoring dolt users" {
+@test "common.bash: stashing, setting, and restoring dolt users" {
   stash_current_dolt_user
   [ "$STASHED_DOLT_USER_NAME" = "Bats Tests" ]
   [ "$STASHED_DOLT_USER_EMAIL" = "bats@email.fake" ]
